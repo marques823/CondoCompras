@@ -19,8 +19,9 @@ class LinkPrestadorController extends Controller
     {
         $link = LinkPrestador::where('token', $token)->firstOrFail();
 
-        if (!$link->isValido()) {
-            abort(404, 'Link expirado ou já utilizado.');
+        // Verifica se o link está expirado
+        if ($link->expira_em && $link->expira_em->isPast()) {
+            abort(404, 'Link expirado.');
         }
 
         // Incrementa acesso
@@ -30,17 +31,27 @@ class LinkPrestadorController extends Controller
         $demanda = $link->demanda;
         $prestador = $link->prestador;
 
-        $demanda->prestadores()->updateExistingPivot($prestador->id, [
-            'status' => 'visualizou',
-            'visualizado_em' => now(),
-        ]);
+        // Só marca como visualizado se ainda não enviou orçamento
+        $jaEnviouOrcamento = $demanda->orcamentos()
+            ->where('prestador_id', $prestador->id)
+            ->exists();
+
+        if (!$jaEnviouOrcamento) {
+            $demanda->prestadores()->updateExistingPivot($prestador->id, [
+                'status' => 'visualizou',
+                'visualizado_em' => now(),
+            ]);
+        }
 
         // Carrega dados necessários
         $demanda->load(['condominio', 'categoriaServico', 'orcamentos' => function ($query) use ($prestador) {
-            $query->where('prestador_id', $prestador->id);
+            $query->where('prestador_id', $prestador->id)->orderBy('created_at', 'desc');
         }]);
 
-        return view('prestador.demanda', compact('link', 'demanda', 'prestador'));
+        // Verifica se já enviou orçamento
+        $jaEnviouOrcamento = $demanda->orcamentos->where('prestador_id', $prestador->id)->isNotEmpty();
+
+        return view('prestador.demanda', compact('link', 'demanda', 'prestador', 'jaEnviouOrcamento'));
     }
 
     /**
@@ -50,9 +61,20 @@ class LinkPrestadorController extends Controller
     {
         $link = LinkPrestador::where('token', $token)->firstOrFail();
 
-        if (!$link->isValido()) {
+        // Verifica se já enviou orçamento
+        $jaEnviouOrcamento = Orcamento::where('demanda_id', $link->demanda_id)
+            ->where('prestador_id', $link->prestador_id)
+            ->exists();
+
+        if ($jaEnviouOrcamento) {
             return redirect()->route('prestador.link.show', $token)
-                ->withErrors(['error' => 'Link expirado ou já utilizado.']);
+                ->withErrors(['error' => 'Você já enviou um orçamento para esta demanda. Não é possível enviar novamente.']);
+        }
+
+        // Verifica se o link está expirado
+        if ($link->expira_em && $link->expira_em->isPast()) {
+            return redirect()->route('prestador.link.show', $token)
+                ->withErrors(['error' => 'Link expirado.']);
         }
 
         $request->validate([
@@ -99,8 +121,8 @@ class LinkPrestadorController extends Controller
             'status' => 'enviou_orcamento',
         ]);
 
-        // Marca link como usado (mas não bloqueia - permite enviar mais orçamentos)
-        // $link->marcarComoUsado(); // Comentado para permitir múltiplos orçamentos
+        // Marca link como usado após o primeiro envio (bloqueia novos envios)
+        $link->marcarComoUsado();
 
         // Recarrega os dados para exibir na view
         $demanda->load(['condominio', 'categoriaServico', 'orcamentos' => function ($query) use ($link) {
@@ -108,7 +130,7 @@ class LinkPrestadorController extends Controller
         }]);
 
         return redirect()->route('prestador.link.show', $token)
-            ->with('success', 'Orçamento enviado com sucesso!');
+            ->with('success', 'Orçamento enviado com sucesso! Você pode acompanhar o status abaixo.');
     }
 
     /**

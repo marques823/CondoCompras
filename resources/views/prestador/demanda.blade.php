@@ -47,7 +47,8 @@
                 </div>
             </div>
 
-            <!-- Formulário de Orçamento -->
+            <!-- Formulário de Orçamento ou Aviso -->
+            @if(!$jaEnviouOrcamento)
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-xl font-semibold text-gray-900 mb-4">Enviar Orçamento</h2>
 
@@ -125,27 +126,84 @@
                     </div>
                 </form>
             </div>
+            @else
+            <!-- Aviso de que já enviou orçamento -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-md p-6 mb-6">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-lg font-medium text-blue-900">Orçamento já enviado</h3>
+                        <p class="mt-2 text-sm text-blue-700">
+                            Você já enviou um orçamento para esta demanda. Não é possível alterar ou enviar novos documentos. 
+                            Acompanhe o status do seu orçamento abaixo.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             <!-- Orçamentos já enviados -->
             @if($demanda->orcamentos->where('prestador_id', $prestador->id)->count() > 0)
             <div class="bg-white rounded-lg shadow-md p-6 mt-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Orçamentos Enviados</h2>
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Status do Orçamento</h2>
                 <div class="space-y-3">
                     @foreach($demanda->orcamentos->where('prestador_id', $prestador->id) as $orcamento)
                         <div class="border border-gray-200 rounded-lg p-4">
                             <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="font-semibold text-gray-900">R$ {{ number_format($orcamento->valor, 2, ',', '.') }}</p>
-                                    <p class="text-sm text-gray-600 mt-1">{{ $orcamento->descricao }}</p>
-                                    <p class="text-xs text-gray-500 mt-2">Enviado em: {{ $orcamento->created_at->format('d/m/Y H:i') }}</p>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <p class="text-lg font-semibold text-gray-900">R$ {{ number_format($orcamento->valor, 2, ',', '.') }}</p>
+                                        <span class="px-3 py-1 text-sm font-semibold rounded-full
+                                            @if($orcamento->status == 'aprovado') bg-green-100 text-green-800
+                                            @elseif($orcamento->status == 'rejeitado') bg-red-100 text-red-800
+                                            @else bg-blue-100 text-blue-800
+                                            @endif">
+                                            {{ ucfirst($orcamento->status) }}
+                                        </span>
+                                    </div>
+                                    
+                                    @if($orcamento->descricao)
+                                        <p class="text-sm text-gray-600 mt-2">{{ $orcamento->descricao }}</p>
+                                    @endif
+                                    
+                                    @if($orcamento->validade)
+                                        <p class="text-xs text-gray-500 mt-2">
+                                            <strong>Validade:</strong> {{ $orcamento->validade->format('d/m/Y') }}
+                                        </p>
+                                    @endif
+                                    
+                                    <p class="text-xs text-gray-500 mt-2">
+                                        <strong>Enviado em:</strong> {{ $orcamento->created_at->format('d/m/Y H:i') }}
+                                    </p>
+                                    
+                                    @if($orcamento->status == 'rejeitado' && $orcamento->motivo_rejeicao)
+                                        <div class="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+                                            <p class="text-sm font-medium text-red-800">Motivo da Rejeição:</p>
+                                            <p class="text-sm text-red-700 mt-1">{{ $orcamento->motivo_rejeicao }}</p>
+                                        </div>
+                                    @endif
+                                    
+                                    @if($orcamento->status == 'aprovado' && $orcamento->aprovado_em)
+                                        <p class="text-xs text-green-600 mt-2">
+                                            <strong>Aprovado em:</strong> {{ $orcamento->aprovado_em->format('d/m/Y H:i') }}
+                                        </p>
+                                    @endif
+                                    
+                                    @if($orcamento->documentos->count() > 0)
+                                        <div class="mt-3">
+                                            <p class="text-xs font-medium text-gray-700 mb-1">Documentos anexados:</p>
+                                            <ul class="text-xs text-gray-600">
+                                                @foreach($orcamento->documentos as $documento)
+                                                    <li>• {{ $documento->nome_original }}</li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    @endif
                                 </div>
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full
-                                    @if($orcamento->status == 'aprovado') bg-green-100 text-green-800
-                                    @elseif($orcamento->status == 'rejeitado') bg-red-100 text-red-800
-                                    @else bg-blue-100 text-blue-800
-                                    @endif">
-                                    {{ ucfirst($orcamento->status) }}
-                                </span>
                             </div>
                         </div>
                     @endforeach
