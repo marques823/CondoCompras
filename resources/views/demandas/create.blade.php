@@ -16,12 +16,15 @@
                             <!-- Condomínio -->
                             <div class="md:col-span-2">
                                 <x-input-label for="condominio_id" :value="__('Condomínio')" />
-                                <select id="condominio_id" name="condominio_id" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" required>
-                                    <option value="">Selecione um condomínio</option>
-                                    @foreach($condominios as $condominio)
-                                        <option value="{{ $condominio->id }}" {{ old('condominio_id') == $condominio->id ? 'selected' : '' }}>{{ $condominio->nome }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <select id="condominio_id" name="condominio_id" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" required>
+                                        <option value="">Selecione um condomínio</option>
+                                        @foreach($condominios as $condominio)
+                                            <option value="{{ $condominio->id }}" {{ old('condominio_id') == $condominio->id ? 'selected' : '' }}>{{ $condominio->nome }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Use o campo de busca acima para filtrar condomínios</p>
                                 <x-input-error :messages="$errors->get('condominio_id')" class="mt-2" />
                             </div>
 
@@ -49,17 +52,21 @@
                             <!-- Prestadores -->
                             <div class="md:col-span-2">
                                 <x-input-label for="prestadores" :value="__('Prestadores (opcional)')" />
-                                <div class="mt-2 space-y-2 max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded p-3">
+                                <div id="prestadores-container" class="mt-2 space-y-2 max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded p-3">
                                     @foreach($prestadores as $prestador)
-                                        <label class="flex items-center">
-                                            <input type="checkbox" name="prestadores[]" value="{{ $prestador->id }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                                        <label class="flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded">
+                                            <input type="checkbox" name="prestadores[]" value="{{ $prestador->id }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" {{ in_array($prestador->id, old('prestadores', [])) ? 'checked' : '' }}>
                                             <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ $prestador->nome_razao_social }}</span>
+                                            @if($prestador->email)
+                                                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">({{ $prestador->email }})</span>
+                                            @endif
                                         </label>
                                     @endforeach
                                     @if($prestadores->isEmpty())
                                         <p class="text-sm text-gray-500 dark:text-gray-400">Nenhum prestador cadastrado. <a href="{{ route('prestadores.create') }}" class="text-blue-500 hover:text-blue-700">Cadastre um prestador primeiro</a></p>
                                     @endif
                                 </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Use o campo de busca acima para filtrar prestadores</p>
                                 <x-input-error :messages="$errors->get('prestadores')" class="mt-2" />
                             </div>
                         </div>

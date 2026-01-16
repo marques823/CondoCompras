@@ -1,5 +1,6 @@
 import './bootstrap';
 import './cnpj-cpf-autocomplete';
+import './demanda-filters';
 
 import Alpine from 'alpinejs';
 
