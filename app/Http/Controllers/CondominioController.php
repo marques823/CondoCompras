@@ -14,6 +14,7 @@ class CondominioController extends Controller
     public function index()
     {
         $condominios = Condominio::daEmpresa(Auth::user()->empresa_id)
+            ->with('tags')
             ->orderBy('nome')
             ->paginate(15);
 
@@ -25,7 +26,14 @@ class CondominioController extends Controller
      */
     public function create()
     {
-        return view('condominios.create');
+        $tags = \App\Models\Tag::daEmpresa(Auth::user()->empresa_id)
+            ->porTipo('condominio')
+            ->ativas()
+            ->orderBy('ordem')
+            ->orderBy('nome')
+            ->get();
+
+        return view('condominios.create', compact('tags'));
     }
 
     /**
@@ -47,12 +55,30 @@ class CondominioController extends Controller
             'sindico_telefone' => 'nullable|string|max:20',
             'sindico_email' => 'nullable|email|max:255',
             'observacoes' => 'nullable|string',
+            'tags' => 'nullable|array',
+            'tags.*' => [
+                'exists:tags,id',
+                function ($attribute, $value, $fail) {
+                    $tag = \App\Models\Tag::find($value);
+                    if ($tag && $tag->empresa_id !== Auth::user()->empresa_id) {
+                        $fail('A tag selecionada não pertence à sua empresa.');
+                    }
+                },
+            ],
         ]);
 
         $validated['empresa_id'] = Auth::user()->empresa_id;
         $validated['ativo'] = true;
 
-        Condominio::create($validated);
+        $tags = $validated['tags'] ?? [];
+        unset($validated['tags']);
+
+        $condominio = Condominio::create($validated);
+
+        // Associa tags
+        if (!empty($tags)) {
+            $condominio->tags()->sync($tags);
+        }
 
         return redirect()->route('condominios.index')
             ->with('success', 'Condomínio cadastrado com sucesso!');
@@ -61,14 +87,11 @@ class CondominioController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Condominio $condominio)
+    public function show($id)
     {
-        // Verifica se pertence à empresa do usuário
-        if ($condominio->empresa_id !== Auth::user()->empresa_id) {
-            abort(403);
-        }
-
-        $condominio->load(['demandas', 'documentos']);
+        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
+            ->with(['demandas', 'documentos', 'tags'])
+            ->findOrFail($id);
 
         return view('condominios.show', compact('condominio'));
     }
@@ -76,25 +99,30 @@ class CondominioController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Condominio $condominio)
+    public function edit($id)
     {
-        // Verifica se pertence à empresa do usuário
-        if ($condominio->empresa_id !== Auth::user()->empresa_id) {
-            abort(403);
-        }
+        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
+            ->findOrFail($id);
 
-        return view('condominios.edit', compact('condominio'));
+        $tags = \App\Models\Tag::daEmpresa(Auth::user()->empresa_id)
+            ->porTipo('condominio')
+            ->ativas()
+            ->orderBy('ordem')
+            ->orderBy('nome')
+            ->get();
+
+        $condominio->load('tags');
+
+        return view('condominios.edit', compact('condominio', 'tags'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Condominio $condominio)
+    public function update(Request $request, $id)
     {
-        // Verifica se pertence à empresa do usuário
-        if ($condominio->empresa_id !== Auth::user()->empresa_id) {
-            abort(403);
-        }
+        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
+            ->findOrFail($id);
 
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
@@ -111,9 +139,25 @@ class CondominioController extends Controller
             'sindico_email' => 'nullable|email|max:255',
             'observacoes' => 'nullable|string',
             'ativo' => 'boolean',
+            'tags' => 'nullable|array',
+            'tags.*' => [
+                'exists:tags,id',
+                function ($attribute, $value, $fail) {
+                    $tag = \App\Models\Tag::find($value);
+                    if ($tag && $tag->empresa_id !== Auth::user()->empresa_id) {
+                        $fail('A tag selecionada não pertence à sua empresa.');
+                    }
+                },
+            ],
         ]);
 
+        $tags = $validated['tags'] ?? [];
+        unset($validated['tags']);
+
         $condominio->update($validated);
+
+        // Atualiza tags
+        $condominio->tags()->sync($tags);
 
         return redirect()->route('condominios.index')
             ->with('success', 'Condomínio atualizado com sucesso!');
@@ -122,12 +166,10 @@ class CondominioController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Condominio $condominio)
+    public function destroy($id)
     {
-        // Verifica se pertence à empresa do usuário
-        if ($condominio->empresa_id !== Auth::user()->empresa_id) {
-            abort(403);
-        }
+        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
+            ->findOrFail($id);
 
         $condominio->delete();
 

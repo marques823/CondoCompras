@@ -11,6 +11,7 @@ class PrestadorController extends Controller
     public function index()
     {
         $prestadores = Prestador::daEmpresa(Auth::user()->empresa_id)
+            ->with('tags')
             ->orderBy('nome_razao_social')
             ->paginate(15);
 
@@ -19,7 +20,14 @@ class PrestadorController extends Controller
 
     public function create()
     {
-        return view('prestadores.create');
+        $tags = \App\Models\Tag::daEmpresa(Auth::user()->empresa_id)
+            ->porTipo('prestador')
+            ->ativas()
+            ->orderBy('ordem')
+            ->orderBy('nome')
+            ->get();
+
+        return view('prestadores.create', compact('tags'));
     }
 
     public function store(Request $request)
@@ -32,41 +40,71 @@ class PrestadorController extends Controller
             'telefone' => 'nullable|string|max:20',
             'celular' => 'nullable|string|max:20',
             'endereco' => 'nullable|string',
+            'bairro' => 'nullable|string|max:255',
+            'cidade' => 'nullable|string|max:255',
+            'estado' => 'nullable|string|max:2',
+            'cep' => 'nullable|string|max:10',
+            'areas_atuacao' => 'nullable|string',
             'observacoes' => 'nullable|string',
+            'tags' => 'nullable|array',
+            'tags.*' => [
+                'exists:tags,id',
+                function ($attribute, $value, $fail) {
+                    $tag = \App\Models\Tag::find($value);
+                    if ($tag && $tag->empresa_id !== Auth::user()->empresa_id) {
+                        $fail('A tag selecionada não pertence à sua empresa.');
+                    }
+                },
+            ],
         ]);
 
         $validated['empresa_id'] = Auth::user()->empresa_id;
         $validated['ativo'] = true;
 
-        Prestador::create($validated);
+        $tags = $validated['tags'] ?? [];
+        unset($validated['tags']);
+
+        $prestador = Prestador::create($validated);
+
+        // Associa tags
+        if (!empty($tags)) {
+            $prestador->tags()->sync($tags);
+        }
 
         return redirect()->route('prestadores.index')
             ->with('success', 'Prestador cadastrado com sucesso!');
     }
 
-    public function show(Prestador $prestador)
+    public function show($id)
     {
-        if ($prestador->empresa_id !== Auth::user()->empresa_id) {
-            abort(403);
-        }
+        $prestador = Prestador::daEmpresa(Auth::user()->empresa_id)
+            ->with('tags')
+            ->findOrFail($id);
 
         return view('prestadores.show', compact('prestador'));
     }
 
-    public function edit(Prestador $prestador)
+    public function edit($id)
     {
-        if ($prestador->empresa_id !== Auth::user()->empresa_id) {
-            abort(403);
-        }
+        $prestador = Prestador::daEmpresa(Auth::user()->empresa_id)
+            ->findOrFail($id);
 
-        return view('prestadores.edit', compact('prestador'));
+        $tags = \App\Models\Tag::daEmpresa(Auth::user()->empresa_id)
+            ->porTipo('prestador')
+            ->ativas()
+            ->orderBy('ordem')
+            ->orderBy('nome')
+            ->get();
+
+        $prestador->load('tags');
+
+        return view('prestadores.edit', compact('prestador', 'tags'));
     }
 
-    public function update(Request $request, Prestador $prestador)
+    public function update(Request $request, $id)
     {
-        if ($prestador->empresa_id !== Auth::user()->empresa_id) {
-            abort(403);
-        }
+        $prestador = Prestador::daEmpresa(Auth::user()->empresa_id)
+            ->findOrFail($id);
 
         $validated = $request->validate([
             'nome_razao_social' => 'required|string|max:255',
@@ -76,21 +114,41 @@ class PrestadorController extends Controller
             'telefone' => 'nullable|string|max:20',
             'celular' => 'nullable|string|max:20',
             'endereco' => 'nullable|string',
+            'bairro' => 'nullable|string|max:255',
+            'cidade' => 'nullable|string|max:255',
+            'estado' => 'nullable|string|max:2',
+            'cep' => 'nullable|string|max:10',
+            'areas_atuacao' => 'nullable|string',
             'observacoes' => 'nullable|string',
             'ativo' => 'boolean',
+            'tags' => 'nullable|array',
+            'tags.*' => [
+                'exists:tags,id',
+                function ($attribute, $value, $fail) {
+                    $tag = \App\Models\Tag::find($value);
+                    if ($tag && $tag->empresa_id !== Auth::user()->empresa_id) {
+                        $fail('A tag selecionada não pertence à sua empresa.');
+                    }
+                },
+            ],
         ]);
 
+        $tags = $validated['tags'] ?? [];
+        unset($validated['tags']);
+
         $prestador->update($validated);
+
+        // Atualiza tags
+        $prestador->tags()->sync($tags);
 
         return redirect()->route('prestadores.index')
             ->with('success', 'Prestador atualizado com sucesso!');
     }
 
-    public function destroy(Prestador $prestador)
+    public function destroy($id)
     {
-        if ($prestador->empresa_id !== Auth::user()->empresa_id) {
-            abort(403);
-        }
+        $prestador = Prestador::daEmpresa(Auth::user()->empresa_id)
+            ->findOrFail($id);
 
         $prestador->delete();
 

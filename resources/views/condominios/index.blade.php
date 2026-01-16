@@ -26,7 +26,8 @@
                                 <thead class="bg-gray-50 dark:bg-gray-700">
                                     <tr>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Endereço</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Localização</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tags</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Síndico</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th>
@@ -38,10 +39,29 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                                 {{ $condominio->nome }}
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                {{ $condominio->endereco }}, {{ $condominio->numero }}
-                                                @if($condominio->bairro)
-                                                    - {{ $condominio->bairro }}
+                                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                @if($condominio->bairro || $condominio->cidade)
+                                                    @if($condominio->bairro)
+                                                        <div>{{ $condominio->bairro }}</div>
+                                                    @endif
+                                                    @if($condominio->cidade)
+                                                        <div class="text-xs">{{ $condominio->cidade }}{{ $condominio->estado ? ' - ' . $condominio->estado : '' }}</div>
+                                                    @endif
+                                                @else
+                                                    {{ $condominio->endereco }}{{ $condominio->numero ? ', ' . $condominio->numero : '' }}
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                @if($condominio->tags->count() > 0)
+                                                    <div class="flex flex-wrap gap-1">
+                                                        @foreach($condominio->tags as $tag)
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style="background-color: {{ $tag->cor }}20; color: {{ $tag->cor }}; border: 1px solid {{ $tag->cor }}40;">
+                                                                {{ $tag->nome }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <span class="text-gray-400 text-xs">-</span>
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">

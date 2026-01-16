@@ -100,6 +100,26 @@
                                 <x-input-error :messages="$errors->get('sindico_email')" class="mt-2" />
                             </div>
 
+                            <!-- Tags -->
+                            <div class="md:col-span-2">
+                                <x-input-label for="tags" :value="__('Tags / Marcadores')" />
+                                <div class="mt-2 space-y-2">
+                                    @if($tags->count() > 0)
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach($tags as $tag)
+                                                <label class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-80 transition-opacity" style="background-color: {{ $tag->cor }}20; color: {{ $tag->cor }}; border: 1px solid {{ $tag->cor }}40;">
+                                                    <input type="checkbox" name="tags[]" value="{{ $tag->id }}" class="sr-only peer" {{ in_array($tag->id, old('tags', [])) ? 'checked' : '' }}>
+                                                    <span class="peer-checked:font-bold">{{ $tag->nome }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma tag disponível. <a href="{{ route('tags.create') }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Criar tag</a></p>
+                                    @endif
+                                </div>
+                                <x-input-error :messages="$errors->get('tags')" class="mt-2" />
+                            </div>
+
                             <!-- Observações -->
                             <div class="md:col-span-2">
                                 <x-input-label for="observacoes" :value="__('Observações')" />

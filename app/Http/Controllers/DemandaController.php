@@ -22,10 +22,43 @@ class DemandaController extends Controller
 
     public function create()
     {
-        $condominios = Condominio::daEmpresa(Auth::user()->empresa_id)->ativos()->orderBy('nome')->get();
-        $prestadores = Prestador::daEmpresa(Auth::user()->empresa_id)->ativos()->orderBy('nome_razao_social')->get();
+        $condominios = Condominio::daEmpresa(Auth::user()->empresa_id)
+            ->ativos()
+            ->with('tags')
+            ->orderBy('nome')
+            ->get();
+            
+        $prestadores = Prestador::daEmpresa(Auth::user()->empresa_id)
+            ->ativos()
+            ->with('tags')
+            ->orderBy('nome_razao_social')
+            ->get();
 
-        return view('demandas.create', compact('condominios', 'prestadores'));
+        $tags = \App\Models\Tag::daEmpresa(Auth::user()->empresa_id)
+            ->ativas()
+            ->orderBy('ordem')
+            ->orderBy('nome')
+            ->get();
+
+        // Prepara dados dos condomínios para JavaScript
+        $condominiosData = $condominios->map(function($c) {
+            return [
+                'id' => $c->id,
+                'nome' => $c->nome,
+                'bairro' => $c->bairro ?? '',
+                'cidade' => $c->cidade ?? '',
+                'estado' => $c->estado ?? '',
+                'tags' => $c->tags->map(function($tag) {
+                    return [
+                        'id' => $tag->id,
+                        'nome' => $tag->nome,
+                        'cor' => $tag->cor
+                    ];
+                })->toArray()
+            ];
+        })->values();
+
+        return view('demandas.create', compact('condominios', 'prestadores', 'tags', 'condominiosData'));
     }
 
     public function store(Request $request)
