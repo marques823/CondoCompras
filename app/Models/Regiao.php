@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Regiao extends Model
 {
+    protected $table = 'regioes';
+
     protected $fillable = [
         'nome',
         'cidade',

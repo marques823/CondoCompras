@@ -2,63 +2,49 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Orcamento;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class OrcamentoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $orcamentos = Orcamento::whereHas('demanda', function($q) {
+                $q->where('empresa_id', Auth::user()->empresa_id);
+            })
+            ->with(['demanda', 'prestador'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        return view('orcamentos.index', compact('orcamentos'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function aprovar(Orcamento $orcamento)
     {
-        //
+        if ($orcamento->demanda->empresa_id !== Auth::user()->empresa_id) {
+            abort(403);
+        }
+
+        $orcamento->aprovar(Auth::id());
+
+        return redirect()->route('orcamentos.index')
+            ->with('success', 'Orçamento aprovado com sucesso!');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function rejeitar(Request $request, Orcamento $orcamento)
     {
-        //
-    }
+        if ($orcamento->demanda->empresa_id !== Auth::user()->empresa_id) {
+            abort(403);
+        }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        $request->validate([
+            'motivo' => 'required|string',
+        ]);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+        $orcamento->rejeitar($request->motivo);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return redirect()->route('orcamentos.index')
+            ->with('success', 'Orçamento rejeitado.');
     }
 }

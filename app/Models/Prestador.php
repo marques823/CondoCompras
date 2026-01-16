@@ -12,6 +12,8 @@ class Prestador extends Model
 {
     use SoftDeletes;
 
+    protected $table = 'prestadores';
+
     protected $fillable = [
         'empresa_id',
         'nome_razao_social',

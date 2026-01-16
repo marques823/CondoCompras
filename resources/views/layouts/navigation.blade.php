@@ -15,6 +15,21 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
+                        {{ __('Condomínios') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('prestadores.index')" :active="request()->routeIs('prestadores.*')">
+                        {{ __('Prestadores') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
+                        {{ __('Demandas') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('orcamentos.index')" :active="request()->routeIs('orcamentos.*')">
+                        {{ __('Orçamentos') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('documentos.index')" :active="request()->routeIs('documentos.*')">
+                        {{ __('Documentos') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -69,6 +84,21 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
+                {{ __('Condomínios') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('prestadores.index')" :active="request()->routeIs('prestadores.*')">
+                {{ __('Prestadores') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
+                {{ __('Demandas') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('orcamentos.index')" :active="request()->routeIs('orcamentos.*')">
+                {{ __('Orçamentos') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('documentos.index')" :active="request()->routeIs('documentos.*')">
+                {{ __('Documentos') }}
             </x-responsive-nav-link>
         </div>
 

@@ -9,6 +9,8 @@ use Carbon\Carbon;
 
 class LinkPrestador extends Model
 {
+    protected $table = 'links_prestador';
+
     protected $fillable = [
         'demanda_id',
         'prestador_id',

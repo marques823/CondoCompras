@@ -51,9 +51,8 @@ class LinkPrestadorController extends Controller
         $link = LinkPrestador::where('token', $token)->firstOrFail();
 
         if (!$link->isValido()) {
-            return response()->json([
-                'message' => 'Link expirado ou já utilizado.'
-            ], 403);
+            return redirect()->route('prestador.link.show', $token)
+                ->withErrors(['error' => 'Link expirado ou já utilizado.']);
         }
 
         $request->validate([
@@ -92,18 +91,24 @@ class LinkPrestadorController extends Controller
             ]);
         }
 
+        // Carrega a demanda
+        $demanda = $link->demanda;
+
         // Atualiza status na relação demanda_prestador
-        $link->demanda->prestadores()->updateExistingPivot($link->prestador_id, [
+        $demanda->prestadores()->updateExistingPivot($link->prestador_id, [
             'status' => 'enviou_orcamento',
         ]);
 
-        // Marca link como usado
-        $link->marcarComoUsado();
+        // Marca link como usado (mas não bloqueia - permite enviar mais orçamentos)
+        // $link->marcarComoUsado(); // Comentado para permitir múltiplos orçamentos
 
-        return response()->json([
-            'message' => 'Orçamento enviado com sucesso!',
-            'orcamento' => $orcamento,
-        ]);
+        // Recarrega os dados para exibir na view
+        $demanda->load(['condominio', 'categoriaServico', 'orcamentos' => function ($query) use ($link) {
+            $query->where('prestador_id', $link->prestador_id);
+        }]);
+
+        return redirect()->route('prestador.link.show', $token)
+            ->with('success', 'Orçamento enviado com sucesso!');
     }
 
     /**

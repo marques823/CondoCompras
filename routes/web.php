@@ -49,4 +49,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserBelongsToE
 Route::get('/prestador/{token}', [LinkPrestadorController::class, 'show'])->name('prestador.link.show');
 Route::post('/prestador/{token}/orcamento', [LinkPrestadorController::class, 'enviarOrcamento'])->name('prestador.link.orcamento');
 
+// API para busca de CNPJ
+Route::get('/api/buscar-cnpj', [\App\Http\Controllers\ApiController::class, 'buscarCNPJ'])->name('api.buscar-cnpj');
+
 require __DIR__.'/auth.php';
