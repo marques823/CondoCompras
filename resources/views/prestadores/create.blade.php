@@ -66,6 +66,62 @@
                                 <x-input-error :messages="$errors->get('endereco')" class="mt-2" />
                             </div>
 
+                            <!-- Bairro -->
+                            <div>
+                                <x-input-label for="bairro" :value="__('Bairro')" />
+                                <x-text-input id="bairro" class="block mt-1 w-full" type="text" name="bairro" :value="old('bairro')" />
+                                <x-input-error :messages="$errors->get('bairro')" class="mt-2" />
+                            </div>
+
+                            <!-- Cidade -->
+                            <div>
+                                <x-input-label for="cidade" :value="__('Cidade')" />
+                                <x-text-input id="cidade" class="block mt-1 w-full" type="text" name="cidade" :value="old('cidade')" />
+                                <x-input-error :messages="$errors->get('cidade')" class="mt-2" />
+                            </div>
+
+                            <!-- Estado -->
+                            <div>
+                                <x-input-label for="estado" :value="__('Estado (UF)')" />
+                                <x-text-input id="estado" class="block mt-1 w-full" type="text" name="estado" maxlength="2" :value="old('estado')" />
+                                <x-input-error :messages="$errors->get('estado')" class="mt-2" />
+                            </div>
+
+                            <!-- CEP -->
+                            <div>
+                                <x-input-label for="cep" :value="__('CEP')" />
+                                <x-text-input id="cep" class="block mt-1 w-full" type="text" name="cep" :value="old('cep')" />
+                                <x-input-error :messages="$errors->get('cep')" class="mt-2" />
+                            </div>
+
+                            <!-- Áreas de Atuação -->
+                            <div class="md:col-span-2">
+                                <x-input-label for="areas_atuacao" :value="__('Áreas de Atuação')" />
+                                <textarea id="areas_atuacao" name="areas_atuacao" rows="3" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" placeholder="Ex: Elétrica, Hidráulica, Pintura, Reformas...">{{ old('areas_atuacao') }}</textarea>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Descreva as áreas de atuação do prestador, separadas por vírgula ou uma por linha</p>
+                                <x-input-error :messages="$errors->get('areas_atuacao')" class="mt-2" />
+                            </div>
+
+                            <!-- Tags -->
+                            <div class="md:col-span-2">
+                                <x-input-label for="tags" :value="__('Tags / Marcadores')" />
+                                <div class="mt-2 space-y-2">
+                                    @if($tags->count() > 0)
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach($tags as $tag)
+                                                <label class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-80 transition-opacity" style="background-color: {{ $tag->cor }}20; color: {{ $tag->cor }}; border: 1px solid {{ $tag->cor }}40;">
+                                                    <input type="checkbox" name="tags[]" value="{{ $tag->id }}" class="sr-only peer" {{ in_array($tag->id, old('tags', [])) ? 'checked' : '' }}>
+                                                    <span class="peer-checked:font-bold">{{ $tag->nome }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Nenhuma tag disponível. <a href="{{ route('tags.create') }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Criar tag</a></p>
+                                    @endif
+                                </div>
+                                <x-input-error :messages="$errors->get('tags')" class="mt-2" />
+                            </div>
+
                             <!-- Observações -->
                             <div class="md:col-span-2">
                                 <x-input-label for="observacoes" :value="__('Observações')" />

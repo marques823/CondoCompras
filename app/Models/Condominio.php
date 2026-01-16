@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Condominio extends Model
@@ -55,6 +56,14 @@ class Condominio extends Model
     public function documentos(): HasMany
     {
         return $this->hasMany(Documento::class);
+    }
+
+    /**
+     * Relacionamento com Tags
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'condominio_tag');
     }
 
     /**

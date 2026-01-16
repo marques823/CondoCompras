@@ -23,7 +23,12 @@ class Prestador extends Model
         'telefone',
         'celular',
         'endereco',
+        'bairro',
+        'cidade',
+        'estado',
+        'cep',
         'observacoes',
+        'areas_atuacao',
         'documentos_obrigatorios',
         'ativo',
     ];
@@ -89,6 +94,14 @@ class Prestador extends Model
     public function documentos(): HasMany
     {
         return $this->hasMany(Documento::class);
+    }
+
+    /**
+     * Relacionamento com Tags
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'prestador_tag');
     }
 
     /**

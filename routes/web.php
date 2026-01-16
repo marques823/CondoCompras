@@ -8,6 +8,7 @@ use App\Http\Controllers\DemandaController;
 use App\Http\Controllers\OrcamentoController;
 use App\Http\Controllers\DocumentoController;
 use App\Http\Controllers\LinkPrestadorController;
+use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -43,6 +44,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserBelongsToE
 
     // Documentos
     Route::resource('documentos', DocumentoController::class);
+
+    // Tags
+    Route::resource('tags', TagController::class);
 });
 
 // Rotas públicas para prestadores (sem autenticação)
