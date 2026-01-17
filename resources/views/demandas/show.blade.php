@@ -64,19 +64,15 @@
                         <div>
                             <h3 class="text-lg font-semibold mb-2">Criado em</h3>
                             <p>{{ $demanda->created_at->format('d/m/Y H:i') }}</p>
-                        </div>
-
-                        @if($demanda->usuario)
-                        <div>
-                            <h3 class="text-lg font-semibold mb-2">Criado por</h3>
-                            <p>{{ $demanda->usuario->name }}</p>
-                            @if($demanda->usuario->isZelador() && $demanda->usuario->telefone)
-                                <p class="text-sm text-gray-500">Tel: {{ $demanda->usuario->telefone }}</p>
-                            @elseif($demanda->usuario->email)
-                                <p class="text-sm text-gray-500">{{ $demanda->usuario->email }}</p>
+                            @if($demanda->usuario)
+                                <p class="text-sm text-gray-500 mt-1">
+                                    por <span class="font-medium">{{ $demanda->usuario->name }}</span>
+                                    @if($demanda->usuario->isZelador())
+                                        <span class="text-xs text-blue-600">(Zelador)</span>
+                                    @endif
+                                </p>
                             @endif
                         </div>
-                        @endif
 
                         @if($demanda->urgencia)
                         <div>
@@ -329,9 +325,15 @@
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                @if($orcamento->status === 'recebido')
+                                                @php
+                                                    $temOrcamentoAprovado = $demanda->orcamentos->where('status', 'aprovado')->isNotEmpty();
+                                                @endphp
+                                                @if($orcamento->status === 'recebido' && !$temOrcamentoAprovado)
                                                     <button onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ $orcamento->prestador->nome_razao_social }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
+                                                    <button onclick="abrirModalRejeitarOrcamento({{ $orcamento->id }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-red-600 hover:text-red-900">Rejeitar</button>
                                                     <button onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
+                                                @elseif($orcamento->status === 'recebido' && $temOrcamentoAprovado)
+                                                    <span class="text-gray-400 text-xs">Outro orçamento já foi aprovado</span>
                                                 @endif
                                                 <a href="{{ route('orcamentos.show', $orcamento) }}" class="text-indigo-600 hover:text-indigo-900">Detalhes</a>
                                             </td>

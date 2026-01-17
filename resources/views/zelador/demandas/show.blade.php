@@ -68,17 +68,12 @@
                         <div>
                             <h3 class="text-lg font-semibold mb-2">Criado em</h3>
                             <p class="text-gray-700 dark:text-gray-300">{{ $demanda->created_at->format('d/m/Y H:i') }}</p>
-                        </div>
-
-                        @if($demanda->usuario)
-                        <div>
-                            <h3 class="text-lg font-semibold mb-2">Criado por</h3>
-                            <p class="text-gray-700 dark:text-gray-300">{{ $demanda->usuario->name }}</p>
-                            @if($demanda->usuario->telefone)
-                                <p class="text-sm text-gray-500">Tel: {{ $demanda->usuario->telefone }}</p>
+                            @if($demanda->usuario)
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    por <span class="font-medium">{{ $demanda->usuario->name }}</span>
+                                </p>
                             @endif
                         </div>
-                        @endif
                     </div>
 
                     <div class="mb-6 text-gray-900 dark:text-gray-100">
