@@ -81,4 +81,12 @@ class Condominio extends Model
     {
         return $query->where('empresa_id', $empresaId);
     }
+
+    /**
+     * Relacionamento com Links de Condomínio
+     */
+    public function links(): HasMany
+    {
+        return $this->hasMany(LinkCondominio::class);
+    }
 }

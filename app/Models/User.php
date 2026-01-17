@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'empresa_id',
+        'condominio_id',
         'perfil',
     ];
 
@@ -57,11 +58,27 @@ class User extends Authenticatable
     }
 
     /**
+     * Relacionamento com Condomínio
+     */
+    public function condominio()
+    {
+        return $this->belongsTo(Condominio::class);
+    }
+
+    /**
      * Verifica se o usuário é admin
      */
     public function isAdmin(): bool
     {
         return $this->perfil === 'admin';
+    }
+
+    /**
+     * Verifica se o usuário é zelador
+     */
+    public function isZelador(): bool
+    {
+        return $this->perfil === 'zelador';
     }
 
     /**

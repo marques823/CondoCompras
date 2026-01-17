@@ -79,7 +79,8 @@
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <a href="{{ route('condominios.edit', $condominio) }}" class="text-blue-600 hover:text-blue-900 mr-3">Editar</a>
+                                                <a href="{{ route('condominios.show', $condominio->id) }}" class="text-blue-600 hover:text-blue-900 mr-3">Ver</a>
+                                                <a href="{{ route('condominios.edit', $condominio) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Editar</a>
                                                 <form action="{{ route('condominios.destroy', $condominio) }}" method="POST" class="inline" onsubmit="return confirm('Tem certeza que deseja remover este condomínio?');">
                                                     @csrf
                                                     @method('DELETE')

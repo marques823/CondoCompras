@@ -20,12 +20,8 @@ class Demanda extends Model
         'titulo',
         'descricao',
         'status',
-        'prazo_limite',
+        'urgencia',
         'observacoes',
-    ];
-
-    protected $casts = [
-        'prazo_limite' => 'date',
     ];
 
     /**
@@ -100,6 +96,14 @@ class Demanda extends Model
     public function negociacoes(): HasMany
     {
         return $this->hasMany(Negociacao::class);
+    }
+
+    /**
+     * Relacionamento com Anexos
+     */
+    public function anexos(): HasMany
+    {
+        return $this->hasMany(DemandaAnexo::class);
     }
 
     /**

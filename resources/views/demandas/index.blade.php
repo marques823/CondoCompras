@@ -70,20 +70,19 @@
                                 </div>
                             </div>
 
-                            <!-- Filtro por Categoria de Serviço -->
+                            <!-- Filtro por Urgência -->
                             <div>
-                                <label for="categoria_servico_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Tipo de Serviço
+                                <label for="urgencia" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Urgência
                                 </label>
-                                <select id="categoria_servico_id" 
-                                        name="categoria_servico_id" 
+                                <select id="urgencia" 
+                                        name="urgencia" 
                                         class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                    <option value="">Todos</option>
-                                    @foreach($categorias as $categoria)
-                                        <option value="{{ $categoria->id }}" {{ request('categoria_servico_id') == $categoria->id ? 'selected' : '' }}>
-                                            {{ $categoria->nome }}
-                                        </option>
-                                    @endforeach
+                                    <option value="todos" {{ request('urgencia') === 'todos' || !request('urgencia') ? 'selected' : '' }}>Todas</option>
+                                    <option value="baixa" {{ request('urgencia') === 'baixa' ? 'selected' : '' }}>Baixa</option>
+                                    <option value="media" {{ request('urgencia') === 'media' ? 'selected' : '' }}>Média</option>
+                                    <option value="alta" {{ request('urgencia') === 'alta' ? 'selected' : '' }}>Alta</option>
+                                    <option value="critica" {{ request('urgencia') === 'critica' ? 'selected' : '' }}>Crítica</option>
                                 </select>
                             </div>
                         </div>
@@ -139,9 +138,9 @@
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Condomínio</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                                            <a href="{{ getSortUrl('categoria_servico_id', $ordenarDirecao, $ordenarColuna) }}" class="flex items-center">
-                                                Tipo de Serviço
-                                                {!! getSortIcon('categoria_servico_id', $ordenarColuna, $ordenarDirecao) !!}
+                                            <a href="{{ getSortUrl('urgencia', $ordenarDirecao, $ordenarColuna) }}" class="flex items-center">
+                                                Urgência
+                                                {!! getSortIcon('urgencia', $ordenarColuna, $ordenarDirecao) !!}
                                             </a>
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
@@ -168,8 +167,28 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                 {{ $demanda->condominio->nome }}
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                {{ $demanda->categoriaServico->nome ?? '-' }}
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                @php
+                                                    $urgenciaColors = [
+                                                        'baixa' => 'bg-green-100 text-green-800',
+                                                        'media' => 'bg-yellow-100 text-yellow-800',
+                                                        'alta' => 'bg-orange-100 text-orange-800',
+                                                        'critica' => 'bg-red-100 text-red-800',
+                                                    ];
+                                                    $urgenciaLabels = [
+                                                        'baixa' => 'Baixa',
+                                                        'media' => 'Média',
+                                                        'alta' => 'Alta',
+                                                        'critica' => 'Crítica',
+                                                    ];
+                                                @endphp
+                                                @if($demanda->urgencia)
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $urgenciaColors[$demanda->urgencia] ?? 'bg-gray-100 text-gray-800' }}">
+                                                        {{ $urgenciaLabels[$demanda->urgencia] ?? ucfirst($demanda->urgencia) }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-sm text-gray-400">-</span>
+                                                @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 @php
