@@ -141,11 +141,11 @@
                                             <x-input-error :messages="$errors->get('zelador_nome')" class="mt-2" />
                                         </div>
 
-                                        <!-- Email do Zelador -->
+                                        <!-- Telefone do Zelador -->
                                         <div>
-                                            <x-input-label for="zelador_email" :value="__('E-mail do Zelador')" />
-                                            <x-text-input id="zelador_email" class="block mt-1 w-full" type="email" name="zelador_email" :value="old('zelador_email')" />
-                                            <x-input-error :messages="$errors->get('zelador_email')" class="mt-2" />
+                                            <x-input-label for="zelador_telefone" :value="__('Telefone/Celular do Zelador')" />
+                                            <x-text-input id="zelador_telefone" class="block mt-1 w-full" type="tel" name="zelador_telefone" :value="old('zelador_telefone')" placeholder="(00) 00000-0000" />
+                                            <x-input-error :messages="$errors->get('zelador_telefone')" class="mt-2" />
                                         </div>
 
                                         <!-- Senha do Zelador -->

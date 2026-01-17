@@ -69,6 +69,16 @@
                             <h3 class="text-lg font-semibold mb-2">Criado em</h3>
                             <p class="text-gray-700 dark:text-gray-300">{{ $demanda->created_at->format('d/m/Y H:i') }}</p>
                         </div>
+
+                        @if($demanda->usuario)
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2">Criado por</h3>
+                            <p class="text-gray-700 dark:text-gray-300">{{ $demanda->usuario->name }}</p>
+                            @if($demanda->usuario->telefone)
+                                <p class="text-sm text-gray-500">Tel: {{ $demanda->usuario->telefone }}</p>
+                            @endif
+                        </div>
+                        @endif
                     </div>
 
                     <div class="mb-6 text-gray-900 dark:text-gray-100">
@@ -217,7 +227,6 @@
                                     <div class="flex justify-between items-start">
                                         <div>
                                             <p class="font-bold text-gray-900 dark:text-gray-100">{{ $orcamento->prestador->nome_razao_social }}</p>
-                                            <p class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">R$ {{ number_format($orcamento->valor, 2, ',', '.') }}</p>
                                         </div>
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $orcamento->status === 'aprovado' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }}">
                                             {{ ucfirst($orcamento->status) }}

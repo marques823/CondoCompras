@@ -137,6 +137,7 @@
                                             </a>
                                         </th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Condomínio</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Criado por</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                                             <a href="{{ getSortUrl('urgencia', $ordenarDirecao, $ordenarColuna) }}" class="flex items-center">
                                                 Urgência
@@ -166,6 +167,18 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                 {{ $demanda->condominio->nome }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                                @if($demanda->usuario)
+                                                    <div>
+                                                        <span class="font-medium">{{ $demanda->usuario->name }}</span>
+                                                        @if($demanda->usuario->isZelador())
+                                                            <span class="text-xs text-blue-600">(Zelador)</span>
+                                                        @endif
+                                                    </div>
+                                                @else
+                                                    <span class="text-gray-400">-</span>
+                                                @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 @php

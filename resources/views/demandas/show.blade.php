@@ -66,6 +66,18 @@
                             <p>{{ $demanda->created_at->format('d/m/Y H:i') }}</p>
                         </div>
 
+                        @if($demanda->usuario)
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2">Criado por</h3>
+                            <p>{{ $demanda->usuario->name }}</p>
+                            @if($demanda->usuario->isZelador() && $demanda->usuario->telefone)
+                                <p class="text-sm text-gray-500">Tel: {{ $demanda->usuario->telefone }}</p>
+                            @elseif($demanda->usuario->email)
+                                <p class="text-sm text-gray-500">{{ $demanda->usuario->email }}</p>
+                            @endif
+                        </div>
+                        @endif
+
                         @if($demanda->urgencia)
                         <div>
                             <h3 class="text-lg font-semibold mb-2">Urgência</h3>

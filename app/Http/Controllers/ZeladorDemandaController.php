@@ -25,6 +25,7 @@ class ZeladorDemandaController extends Controller
         $condominio = $user->condominio;
         
         $demandas = $condominio->demandas()
+            ->with('usuario')
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
@@ -115,7 +116,7 @@ class ZeladorDemandaController extends Controller
             abort(403, 'Acesso negado. Esta demanda não pertence ao seu condomínio.');
         }
 
-        $demanda->load(['orcamentos.prestador', 'orcamentos.negociacoes', 'anexos']);
+        $demanda->load(['usuario', 'orcamentos.prestador', 'orcamentos.negociacoes', 'anexos']);
 
         return view('zelador.demandas.show', compact('demanda'));
     }
