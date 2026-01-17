@@ -3,21 +3,132 @@
 namespace App\Http\Controllers;
 
 use App\Models\Orcamento;
+use App\Models\Condominio;
+use App\Models\Prestador;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class OrcamentoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orcamentos = Orcamento::whereHas('demanda', function($q) {
+        $query = Orcamento::whereHas('demanda', function($q) {
                 $q->where('empresa_id', Auth::user()->empresa_id);
             })
-            ->with(['demanda', 'prestador'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+            ->with(['demanda.condominio', 'demanda.categoriaServico', 'prestador']);
 
-        return view('orcamentos.index', compact('orcamentos'));
+        // Filtro por pesquisa (demanda, prestador)
+        if ($request->filled('pesquisa')) {
+            $pesquisa = $request->pesquisa;
+            $query->where(function($q) use ($pesquisa) {
+                $q->whereHas('demanda', function($query) use ($pesquisa) {
+                    $query->where('titulo', 'like', "%{$pesquisa}%")
+                          ->orWhere('descricao', 'like', "%{$pesquisa}%");
+                })->orWhereHas('prestador', function($query) use ($pesquisa) {
+                    $query->where('nome_razao_social', 'like', "%{$pesquisa}%");
+                });
+            });
+        }
+
+        // Filtro por status
+        if ($request->filled('status') && $request->status !== 'todos') {
+            $query->where('status', $request->status);
+        }
+
+        // Filtro por condomínio
+        if ($request->filled('condominio_id')) {
+            $query->whereHas('demanda', function($q) use ($request) {
+                $q->where('condominio_id', $request->condominio_id);
+            });
+        }
+
+        // Filtro por prestador
+        if ($request->filled('prestador_id')) {
+            $query->where('prestador_id', $request->prestador_id);
+        }
+
+        // Filtro por valor mínimo
+        if ($request->filled('valor_min')) {
+            $query->where('valor', '>=', $request->valor_min);
+        }
+
+        // Filtro por valor máximo
+        if ($request->filled('valor_max')) {
+            $query->where('valor', '<=', $request->valor_max);
+        }
+
+        // Ordenação por clique na coluna
+        $ordenarColuna = $request->get('ordenar_coluna', 'created_at');
+        $ordenarDirecao = $request->get('ordenar_direcao', 'desc');
+        
+        // Valida coluna de ordenação
+        $colunasPermitidas = ['valor', 'status', 'created_at', 'prestador_id'];
+        if (!in_array($ordenarColuna, $colunasPermitidas)) {
+            $ordenarColuna = 'created_at';
+        }
+        
+        // Valida direção de ordenação
+        if (!in_array($ordenarDirecao, ['asc', 'desc'])) {
+            $ordenarDirecao = 'desc';
+        }
+        
+        // Aplica ordenação
+        if ($ordenarColuna === 'prestador_id') {
+            $query->join('prestadores', 'orcamentos.prestador_id', '=', 'prestadores.id')
+                  ->select('orcamentos.*')
+                  ->orderBy('prestadores.nome_razao_social', $ordenarDirecao);
+        } else {
+            $query->orderBy($ordenarColuna, $ordenarDirecao);
+        }
+        
+        // Ordenação secundária sempre por data (mais recente primeiro) se não for por data
+        if ($ordenarColuna !== 'created_at') {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $orcamentos = $query->paginate(15)->withQueryString();
+
+        // Carrega dados para filtros
+        $condominiosData = Condominio::daEmpresa(Auth::user()->empresa_id)
+            ->ativos()
+            ->select('id', 'nome', 'bairro', 'cidade')
+            ->orderBy('nome')
+            ->get()
+            ->map(function($c) {
+                return [
+                    'id' => $c->id,
+                    'nome' => $c->nome,
+                    'bairro' => $c->bairro ?? '',
+                    'cidade' => $c->cidade ?? '',
+                ];
+            })->values();
+
+        $prestadores = Prestador::daEmpresa(Auth::user()->empresa_id)
+            ->ativos()
+            ->select('id', 'nome_razao_social')
+            ->orderBy('nome_razao_social')
+            ->get();
+
+        return view('orcamentos.index', compact('orcamentos', 'condominiosData', 'prestadores'));
+    }
+
+    public function show(Orcamento $orcamento)
+    {
+        if ($orcamento->demanda->empresa_id !== Auth::user()->empresa_id) {
+            abort(403);
+        }
+
+        $orcamento->load([
+            'demanda.condominio',
+            'demanda.categoriaServico',
+            'prestador',
+            'documentos',
+            'negociacoes' => function($query) {
+                $query->orderBy('created_at', 'desc');
+            }
+        ]);
+
+        return view('orcamentos.show', compact('orcamento'));
     }
 
     public function aprovar(Orcamento $orcamento)

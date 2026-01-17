@@ -49,6 +49,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserBelongsToE
 
     // Documentos
     Route::resource('documentos', DocumentoController::class);
+    Route::get('documentos/{documento}/visualizar', [DocumentoController::class, 'visualizar'])->name('documentos.visualizar');
+    Route::get('documentos/{documento}/download', [DocumentoController::class, 'download'])->name('documentos.download');
 
     // Tags
     Route::resource('tags', TagController::class);
