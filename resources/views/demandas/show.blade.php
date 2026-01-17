@@ -9,9 +9,23 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
-                    <div class="mb-6">
+                    <div class="mb-6 flex justify-between items-center">
                         <a href="{{ route('demandas.index') }}" class="text-blue-500 hover:text-blue-700">← Voltar para Demandas</a>
+                        <div class="flex gap-2">
+                            <a href="{{ route('demandas.edit', $demanda) }}" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                                Editar Demanda
+                            </a>
+                            <button type="button" onclick="abrirModalStatus()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                                Alterar Status
+                            </button>
+                        </div>
                     </div>
+
+                    @if (session('success'))
+                        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                            {{ session('success') }}
+                        </div>
+                    @endif
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
@@ -37,7 +51,7 @@
                                     'cancelada' => 'Cancelada',
                                 ];
                             @endphp
-                            <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full {{ $statusColors[$demanda->status] ?? 'bg-gray-100 text-gray-800' }}">
+                            <span id="status-badge" class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full {{ $statusColors[$demanda->status] ?? 'bg-gray-100 text-gray-800' }}">
                                 {{ $statusLabels[$demanda->status] ?? ucfirst($demanda->status) }}
                             </span>
                         </div>
@@ -65,9 +79,15 @@
                         <p class="whitespace-pre-wrap">{{ $demanda->descricao }}</p>
                     </div>
 
-                    @if($demanda->prestadores->count() > 0)
                     <div class="mb-6">
-                        <h3 class="text-lg font-semibold mb-4">Prestadores Convidados</h3>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Prestadores Convidados</h3>
+                            <button type="button" onclick="abrirModalAdicionarPrestador()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
+                                + Adicionar Prestador
+                            </button>
+                        </div>
+
+                    @if($demanda->prestadores->count() > 0)
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead class="bg-gray-50 dark:bg-gray-700">
@@ -75,6 +95,7 @@
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Nome</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Link</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -116,6 +137,13 @@
                                                     <span class="text-gray-400">-</span>
                                                 @endif
                                             </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <form method="POST" action="{{ route('demandas.remover-prestador', [$demanda, $prestador]) }}" onsubmit="return confirm('Tem certeza que deseja remover este prestador?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-900">Remover</button>
+                                                </form>
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -135,6 +163,7 @@
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Valor</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Data</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -160,6 +189,16 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                 {{ $orcamento->created_at->format('d/m/Y') }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                @if($orcamento->status === 'recebido')
+                                                    <div class="flex gap-2">
+                                                        <button type="button" onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ $orcamento->prestador->nome_razao_social }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
+                                                        <button type="button" onclick="abrirModalRejeitarOrcamento({{ $orcamento->id }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-red-600 hover:text-red-900">Rejeitar</button>
+                                                    </div>
+                                                @else
+                                                    <span class="text-gray-400">-</span>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach
@@ -328,5 +367,253 @@
                 }, 300);
             }, 3000);
         }
+
+        // Modal de Alteração de Status
+        function abrirModalStatus() {
+            const modal = document.getElementById('modal-status');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('status_select').value = '{{ $demanda->status }}';
+            }
+        }
+
+        function fecharModalStatus() {
+            const modal = document.getElementById('modal-status');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // Modal de Adicionar Prestador
+        function abrirModalAdicionarPrestador() {
+            const modal = document.getElementById('modal-adicionar-prestador');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function fecharModalAdicionarPrestador() {
+            const modal = document.getElementById('modal-adicionar-prestador');
+            if (modal) {
+                modal.classList.add('hidden');
+                // Limpa seleções
+                document.querySelectorAll('#modal-adicionar-prestador input[type="checkbox"]').forEach(cb => cb.checked = false);
+            }
+        }
+
+        // Modal de Aprovar Orçamento
+        function abrirModalAprovarOrcamento(orcamentoId, valor, prestadorNome) {
+            const modal = document.getElementById('modal-aprovar-orcamento');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('orcamento_id_aprovar').value = orcamentoId;
+                document.getElementById('orcamento_valor_aprovar').textContent = 'R$ ' + valor;
+                document.getElementById('orcamento_prestador_aprovar').textContent = prestadorNome;
+            }
+        }
+
+        function fecharModalAprovarOrcamento() {
+            const modal = document.getElementById('modal-aprovar-orcamento');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('observacoes_aprovar').value = '';
+            }
+        }
+
+        // Modal de Rejeitar Orçamento
+        function abrirModalRejeitarOrcamento(orcamentoId, prestadorNome) {
+            const modal = document.getElementById('modal-rejeitar-orcamento');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('orcamento_id_rejeitar').value = orcamentoId;
+                document.getElementById('orcamento_prestador_rejeitar').textContent = prestadorNome;
+            }
+        }
+
+        function fecharModalRejeitarOrcamento() {
+            const modal = document.getElementById('modal-rejeitar-orcamento');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('motivo_rejeicao').value = '';
+            }
+        }
+
+        // Fechar modais ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                fecharModalStatus();
+                fecharModalAdicionarPrestador();
+                fecharModalAprovarOrcamento();
+                fecharModalRejeitarOrcamento();
+            }
+        });
+    </script>
+
+    <!-- Modal Alterar Status -->
+    <div id="modal-status" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
+                <form method="POST" action="{{ route('demandas.update-status', $demanda) }}">
+                    @csrf
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
+                            Alterar Status da Demanda
+                        </h3>
+                        <div class="mb-4">
+                            <label for="status_select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Novo Status
+                            </label>
+                            <select id="status_select" name="status" required class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <option value="aberta">Aberta</option>
+                                <option value="em_andamento">Em Andamento</option>
+                                <option value="aguardando_orcamento">Aguardando Orçamento</option>
+                                <option value="concluida">Concluída</option>
+                                <option value="cancelada">Cancelada</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Salvar
+                        </button>
+                        <button type="button" onclick="fecharModalStatus()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Prestador -->
+    <div id="modal-adicionar-prestador" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
+                <form method="POST" action="{{ route('demandas.adicionar-prestadores', $demanda) }}">
+                    @csrf
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
+                            Adicionar Prestadores
+                        </h3>
+                        <div class="max-h-96 overflow-y-auto space-y-2">
+                            @forelse($prestadoresDisponiveis ?? [] as $prestador)
+                                <label class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                                    <input type="checkbox" name="prestadores[]" value="{{ $prestador->id }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                                    <span class="ml-2 text-sm text-gray-900 dark:text-gray-100">{{ $prestador->nome_razao_social }}</span>
+                                </label>
+                            @empty
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Todos os prestadores já estão associados a esta demanda.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Adicionar
+                        </button>
+                        <button type="button" onclick="fecharModalAdicionarPrestador()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Aprovar Orçamento -->
+    <div id="modal-aprovar-orcamento" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
+                <form method="POST" id="form-aprovar-orcamento">
+                    @csrf
+                    <input type="hidden" id="orcamento_id_aprovar" value="">
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
+                            Aprovar Orçamento
+                        </h3>
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                <strong>Prestador:</strong> <span id="orcamento_prestador_aprovar"></span>
+                            </p>
+                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                                <strong>Valor:</strong> <span id="orcamento_valor_aprovar"></span>
+                            </p>
+                            <label for="observacoes_aprovar" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Observações (opcional)
+                            </label>
+                            <textarea id="observacoes_aprovar" name="observacoes" rows="3" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Aprovar
+                        </button>
+                        <button type="button" onclick="fecharModalAprovarOrcamento()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Rejeitar Orçamento -->
+    <div id="modal-rejeitar-orcamento" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
+                <form method="POST" id="form-rejeitar-orcamento">
+                    @csrf
+                    <input type="hidden" id="orcamento_id_rejeitar" value="">
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
+                            Rejeitar Orçamento
+                        </h3>
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                                <strong>Prestador:</strong> <span id="orcamento_prestador_rejeitar"></span>
+                            </p>
+                            <label for="motivo_rejeicao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Motivo da Rejeição <span class="text-red-500">*</span>
+                            </label>
+                            <textarea id="motivo_rejeicao" name="motivo_rejeicao" rows="4" required class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Rejeitar
+                        </button>
+                        <button type="button" onclick="fecharModalRejeitarOrcamento()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Atualiza ação do formulário de aprovar/rejeitar orçamento
+        document.addEventListener('DOMContentLoaded', function() {
+            const formAprovar = document.getElementById('form-aprovar-orcamento');
+            const formRejeitar = document.getElementById('form-rejeitar-orcamento');
+            const demandaId = {{ $demanda->id }};
+            
+            if (formAprovar) {
+                formAprovar.addEventListener('submit', function(e) {
+                    const orcamentoId = document.getElementById('orcamento_id_aprovar').value;
+                    if (orcamentoId) {
+                        this.action = '/demandas/' + demandaId + '/orcamentos/' + orcamentoId + '/aprovar';
+                    }
+                });
+            }
+            
+            if (formRejeitar) {
+                formRejeitar.addEventListener('submit', function(e) {
+                    const orcamentoId = document.getElementById('orcamento_id_rejeitar').value;
+                    if (orcamentoId) {
+                        this.action = '/demandas/' + demandaId + '/orcamentos/' + orcamentoId + '/rejeitar';
+                    }
+                });
+            }
+        });
     </script>
 </x-app-layout>
