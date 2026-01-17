@@ -17,13 +17,16 @@ class OrcamentoController extends Controller
             })
             ->with(['demanda.condominio', 'demanda.categoriaServico', 'prestador']);
 
-        // Filtro por pesquisa (demanda, prestador)
+        // Filtro por pesquisa (demanda, prestador, condomínio)
         if ($request->filled('pesquisa')) {
             $pesquisa = $request->pesquisa;
             $query->where(function($q) use ($pesquisa) {
                 $q->whereHas('demanda', function($query) use ($pesquisa) {
                     $query->where('titulo', 'like', "%{$pesquisa}%")
-                          ->orWhere('descricao', 'like', "%{$pesquisa}%");
+                          ->orWhere('descricao', 'like', "%{$pesquisa}%")
+                          ->orWhereHas('condominio', function($qCondo) use ($pesquisa) {
+                              $qCondo->where('nome', 'like', "%{$pesquisa}%");
+                          });
                 })->orWhereHas('prestador', function($query) use ($pesquisa) {
                     $query->where('nome_razao_social', 'like', "%{$pesquisa}%");
                 });

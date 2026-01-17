@@ -30,13 +30,16 @@
                                 <label for="condominio_search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     Condomínio
                                 </label>
+                                <input type="hidden" id="condominio_id" name="condominio_id" value="{{ request('condominio_id') }}">
                                 <input type="text" 
                                        id="condominio_search" 
-                                       placeholder="Buscar condomínio..."
+                                       class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                                       placeholder="Digite para buscar condomínio por nome, bairro ou cidade..."
                                        autocomplete="off"
-                                       class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                <input type="hidden" id="condominio_id" name="condominio_id" value="{{ request('condominio_id') }}">
-                                <div id="condominio-autocomplete" class="hidden absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto"></div>
+                                       value="{{ request('condominio_id') ? ($condominiosData->firstWhere('id', request('condominio_id'))?->nome ?? '') : '' }}">
+                                <div id="condominio-autocomplete" class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto hidden">
+                                    <!-- Resultados serão inseridos aqui pelo JavaScript -->
+                                </div>
                             </div>
 
                             <!-- Filtro por Tipo de Serviço -->
@@ -310,6 +313,7 @@
             
             if (!condominioSearch || !condominioId || !condominioAutocomplete) return;
             
+            // Carrega dados dos condomínios
             const condominiosDataEl = document.getElementById('condominios-filter-data');
             let condominios = [];
             try {
@@ -318,10 +322,12 @@
                 console.error('Erro ao processar dados de condomínios:', e);
             }
             
+            // Função para normalizar strings (remover acentos)
             function normalize(str) {
                 return (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
             }
             
+            // Preenche o campo de busca se já houver um condomínio selecionado (do filtro anterior)
             const selectedId = condominioId.value;
             if (selectedId) {
                 const selected = condominios.find(c => String(c.id) === String(selectedId));
@@ -362,6 +368,7 @@
                     `;
                 }).join('');
                 
+                // Event listeners para as opções
                 condominioAutocomplete.querySelectorAll('.condominio-option').forEach(option => {
                     option.addEventListener('click', function() {
                         const id = this.getAttribute('data-id');
@@ -377,21 +384,38 @@
                 condominioAutocomplete.classList.remove('hidden');
             }
             
-            condominioSearch.addEventListener('input', function() {
-                if (!this.value) {
+            condominioSearch.addEventListener('input', function(e) {
+                if (e.target.value === '') {
                     condominioId.value = '';
                 }
-                renderResults(this.value);
+                renderResults(e.target.value);
+            });
+
+            // Mostra resultados ao clicar no campo se já tiver texto
+            condominioSearch.addEventListener('click', function(e) {
+                if (this.value.length >= 1) {
+                    renderResults(this.value);
+                }
             });
             
-            condominioSearch.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
+            // Fecha autocomplete ao clicar fora
+            document.addEventListener('click', function(e) {
+                if (!condominioSearch.contains(e.target) && !condominioAutocomplete.contains(e.target)) {
                     condominioAutocomplete.classList.add('hidden');
                 }
             });
             
-            document.addEventListener('click', function(e) {
-                if (!condominioAutocomplete.contains(e.target) && e.target !== condominioSearch) {
+            // Atalhos de teclado
+            condominioSearch.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' && condominioSearch.value === '') {
+                    condominioId.value = '';
+                } else if (e.key === 'Enter') {
+                    const firstOption = condominioAutocomplete.querySelector('.condominio-option');
+                    if (!condominioAutocomplete.classList.contains('hidden') && firstOption) {
+                        e.preventDefault();
+                        firstOption.click();
+                    }
+                } else if (e.key === 'Escape') {
                     condominioAutocomplete.classList.add('hidden');
                 }
             });
