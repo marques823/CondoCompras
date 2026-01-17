@@ -16,10 +16,18 @@ class DocumentoController extends Controller
         $query = Documento::daEmpresa(Auth::user()->empresa_id)
             ->with(['condominio', 'demanda.categoriaServico', 'demanda.condominio', 'orcamento', 'prestador']);
 
-        // Filtro por pesquisa (nome do arquivo)
+        // Filtro por pesquisa (nome do arquivo, condomínio)
         if ($request->filled('pesquisa')) {
             $pesquisa = $request->pesquisa;
-            $query->where('nome_original', 'like', "%{$pesquisa}%");
+            $query->where(function($q) use ($pesquisa) {
+                $q->where('nome_original', 'like', "%{$pesquisa}%")
+                  ->orWhereHas('condominio', function($qCondo) use ($pesquisa) {
+                      $qCondo->where('nome', 'like', "%{$pesquisa}%");
+                  })
+                  ->orWhereHas('demanda.condominio', function($qCondo) use ($pesquisa) {
+                      $qCondo->where('nome', 'like', "%{$pesquisa}%");
+                  });
+            });
         }
 
         // Filtro por condomínio
