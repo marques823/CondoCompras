@@ -13,8 +13,9 @@ class TagController extends Controller
      */
     public function index()
     {
-        $tags = Tag::daAdministradora(Auth::user()->administradora_id)
-            ->orderBy('ordem')
+        $this->authorize('viewAny', Tag::class);
+        
+        $tags = Tag::orderBy('ordem')
             ->orderBy('nome')
             ->paginate(20);
 
@@ -26,6 +27,7 @@ class TagController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Tag::class);
         return view('tags.create');
     }
 
@@ -34,6 +36,8 @@ class TagController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Tag::class);
+        
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
             'cor' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
@@ -56,9 +60,7 @@ class TagController extends Controller
      */
     public function show(Tag $tag)
     {
-        if ($tag->administradora_id !== Auth::user()->administradora_id) {
-            abort(403);
-        }
+        $this->authorize('view', $tag);
 
         $tag->load(['prestadores', 'condominios']);
 
@@ -70,9 +72,7 @@ class TagController extends Controller
      */
     public function edit(Tag $tag)
     {
-        if ($tag->administradora_id !== Auth::user()->administradora_id) {
-            abort(403);
-        }
+        $this->authorize('update', $tag);
 
         return view('tags.edit', compact('tag'));
     }
@@ -82,9 +82,7 @@ class TagController extends Controller
      */
     public function update(Request $request, Tag $tag)
     {
-        if ($tag->administradora_id !== Auth::user()->administradora_id) {
-            abort(403);
-        }
+        $this->authorize('update', $tag);
 
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
@@ -106,9 +104,7 @@ class TagController extends Controller
      */
     public function destroy(Tag $tag)
     {
-        if ($tag->administradora_id !== Auth::user()->administradora_id) {
-            abort(403);
-        }
+        $this->authorize('delete', $tag);
 
         $tag->delete();
 

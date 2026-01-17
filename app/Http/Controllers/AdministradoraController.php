@@ -18,14 +18,67 @@ class AdministradoraController extends Controller
     {
         $user = Auth::user();
         
+        // Carrega a administradora do usuário
+        $empresa = $user->administradora;
+        
+        if (!$empresa) {
+            return redirect()->route('dashboard')->with('error', 'Usuário sem administradora vinculada.');
+        }
+        
+        // Estatísticas filtradas pela administradora
         $stats = [
-            'total_condominios' => Condominio::count(),
-            'total_gerentes' => User::whereHas('roles', fn($q) => $q->where('name', 'gerente'))->count(),
-            'total_demandas' => Demanda::count(),
-            'demandas_abertas' => Demanda::where('status', 'aberta')->count(),
+            'total_condominios' => Condominio::where('administradora_id', $empresa->id)->count(),
+            'total_gerentes' => User::where('administradora_id', $empresa->id)
+                ->whereHas('roles', fn($q) => $q->where('name', 'gerente'))
+                ->count(),
+            'total_demandas' => Demanda::where('administradora_id', $empresa->id)->count(),
+            'demandas_abertas' => Demanda::where('administradora_id', $empresa->id)
+                ->where('status', 'aberta')
+                ->count(),
+            'demandas_em_andamento' => Demanda::where('administradora_id', $empresa->id)
+                ->where('status', 'em_andamento')
+                ->count(),
+            'demandas_concluidas' => Demanda::where('administradora_id', $empresa->id)
+                ->where('status', 'concluida')
+                ->count(),
         ];
+        
+        // Variáveis para compatibilidade com a view
+        $totalCondominios = $stats['total_condominios'];
+        $totalPrestadores = \App\Models\Prestador::where('administradora_id', $empresa->id)->count();
+        $totalDemandas = $stats['total_demandas'];
+        $totalOrcamentos = \App\Models\Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->count();
+        $demandasAbertas = $stats['demandas_abertas'];
+        $demandasEmAndamento = $stats['demandas_em_andamento'];
+        $demandasConcluidas = $stats['demandas_concluidas'];
+        
+        // Condomínios recentes
+        $condominiosRecentes = Condominio::where('administradora_id', $empresa->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        // Demandas recentes
+        $demandasRecentes = Demanda::where('administradora_id', $empresa->id)
+            ->with(['condominio', 'usuario'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
 
-        return view('administradora.dashboard', compact('stats'));
+        return view('administradora.dashboard', compact(
+            'empresa',
+            'totalCondominios',
+            'totalPrestadores',
+            'totalDemandas',
+            'totalOrcamentos',
+            'demandasAbertas',
+            'demandasEmAndamento',
+            'demandasConcluidas',
+            'condominiosRecentes',
+            'demandasRecentes'
+        ));
     }
 
     /**
@@ -98,6 +151,52 @@ class AdministradoraController extends Controller
         $administradora->update($validated);
 
         return redirect()->route('administradoras.index')->with('success', 'Administradora atualizada!');
+    }
+
+    /**
+     * Mostra formulário para editar configurações da própria administradora
+     */
+    public function editConfig()
+    {
+        $user = Auth::user();
+        
+        if (!$user->isAdministradora() || !$user->administradora_id) {
+            abort(403, 'Acesso negado.');
+        }
+        
+        $empresa = $user->administradora;
+        return view('administradora.config', compact('empresa'));
+    }
+
+    /**
+     * Atualiza configurações da própria administradora
+     */
+    public function updateConfig(Request $request)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isAdministradora() || !$user->administradora_id) {
+            abort(403, 'Acesso negado.');
+        }
+        
+        $empresa = $user->administradora;
+
+        $validated = $request->validate([
+            'nome' => 'required|string|max:255',
+            'razao_social' => 'nullable|string|max:255',
+            'cnpj' => 'nullable|string|max:18|unique:administradoras,cnpj,' . $empresa->id,
+            'email' => 'required|email|unique:administradoras,email,' . $empresa->id,
+            'telefone' => 'nullable|string|max:20',
+            'endereco' => 'nullable|string',
+            'bairro' => 'nullable|string|max:255',
+            'cidade' => 'nullable|string|max:255',
+            'estado' => 'nullable|string|max:2',
+            'cep' => 'nullable|string|max:10',
+        ]);
+
+        $empresa->update($validated);
+
+        return redirect()->route('administradora.config')->with('success', 'Configurações atualizadas com sucesso!');
     }
 
     public function destroy(Administradora $administradora)

@@ -2,13 +2,22 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                {{ __('Usuários') }}
+                @if(Auth::user()->isGerente())
+                    {{ __('Zeladores') }}
+                @elseif(Auth::user()->isAdministradora())
+                    {{ __('Gerentes') }}
+                @elseif(Auth::user()->isAdmin())
+                    {{ __('Administradoras (Usuários)') }}
+                @else
+                    {{ __('Usuários') }}
+                @endif
             </h2>
             <a href="{{ route('users.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Novo Usuário
+                @if(Auth::user()->isGerente()) Novo Zelador @elseif(Auth::user()->isAdministradora()) Novo Gerente @else Novo Usuário @endif
             </a>
         </div>
     </x-slot>
+
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -61,13 +70,13 @@
                                                     $perfilColors = [
                                                         'admin' => 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
                                                         'administradora' => 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-                                                        'usuario' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+                                                        'gerente' => 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
                                                         'zelador' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
                                                     ];
                                                     $perfilLabels = [
                                                         'admin' => 'Super Admin',
                                                         'administradora' => 'Administradora',
-                                                        'usuario' => 'Usuário',
+                                                        'gerente' => 'Gerente',
                                                         'zelador' => 'Zelador',
                                                     ];
                                                 @endphp
@@ -75,6 +84,7 @@
                                                     {{ $perfilLabels[$user->perfil] ?? $user->perfil }}
                                                 </span>
                                             </td>
+
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                 {{ $user->administradora->nome ?? '-' }}
                                             </td>
@@ -105,12 +115,13 @@
                         </div>
                     @else
                         <div class="text-center py-12">
-                            <p class="text-gray-500 dark:text-gray-400 mb-4">Nenhum usuário cadastrado ainda.</p>
+                            <p class="text-gray-500 dark:text-gray-400 mb-4">Nenhum usuário cadastrado nesta categoria.</p>
                             <a href="{{ route('users.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700">
-                                Criar Primeiro Usuário
+                                @if(Auth::user()->isGerente()) Criar Primeiro Zelador @elseif(Auth::user()->isAdministradora()) Criar Primeiro Gerente @else Criar Primeiro Usuário @endif
                             </a>
                         </div>
                     @endif
+
                 </div>
             </div>
         </div>

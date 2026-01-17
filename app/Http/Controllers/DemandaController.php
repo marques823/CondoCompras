@@ -61,13 +61,20 @@ class DemandaController extends Controller
         $this->authorize('create', Demanda::class);
 
         $condominios = Condominio::ativos()->with('tags')->orderBy('nome')->get();
+        $condominiosData = $condominios->map(fn($c) => [
+            'id' => $c->id,
+            'nome' => $c->nome,
+            'bairro' => $c->bairro,
+            'cidade' => $c->cidade
+        ]);
             
         $prestadores = Prestador::ativos()->with('tags')->orderBy('nome_razao_social')->get();
 
         $tags = Tag::ativas()->orderBy('ordem')->orderBy('nome')->get();
 
-        return view('demandas.create', compact('condominios', 'prestadores', 'tags'));
+        return view('demandas.create', compact('condominios', 'condominiosData', 'prestadores', 'tags'));
     }
+
 
     public function store(Request $request)
     {
@@ -138,12 +145,20 @@ class DemandaController extends Controller
         $this->authorize('update', $demanda);
 
         $condominios = Condominio::ativos()->with('tags')->orderBy('nome')->get();
+        $condominiosData = $condominios->map(fn($c) => [
+            'id' => $c->id,
+            'nome' => $c->nome,
+            'bairro' => $c->bairro,
+            'cidade' => $c->cidade
+        ]);
+        
         $prestadores = Prestador::ativos()->with('tags')->orderBy('nome_razao_social')->get();
         $tags = Tag::ativas()->orderBy('ordem')->orderBy('nome')->get();
         $prestadoresSelecionados = $demanda->prestadores->pluck('id')->toArray();
 
-        return view('demandas.edit', compact('demanda', 'condominios', 'prestadores', 'tags', 'prestadoresSelecionados'));
+        return view('demandas.edit', compact('demanda', 'condominios', 'condominiosData', 'prestadores', 'tags', 'prestadoresSelecionados'));
     }
+
 
     public function update(Request $request, Demanda $demanda)
     {
@@ -235,5 +250,69 @@ class DemandaController extends Controller
         });
 
         return redirect()->back()->with('success', 'Orçamento aprovado!');
+    }
+
+    public function adicionarPrestador(Request $request, Demanda $demanda)
+    {
+        $this->authorize('update', $demanda);
+
+        $validated = $request->validate([
+            'prestador_id' => 'required|exists:prestadores,id',
+        ]);
+
+        $demanda->prestadores()->syncWithoutDetaching([$validated['prestador_id']]);
+
+        return redirect()->back()->with('success', 'Prestador adicionado à demanda!');
+    }
+
+    public function removerPrestador(Demanda $demanda, Prestador $prestador)
+    {
+        $this->authorize('update', $demanda);
+
+        $demanda->prestadores()->detach($prestador->id);
+
+        return redirect()->back()->with('success', 'Prestador removido da demanda!');
+    }
+
+    public function rejeitarOrcamento(Request $request, Demanda $demanda, $orcamento)
+    {
+        $this->authorize('update', $demanda);
+
+        $orcamento = Orcamento::where('demanda_id', $demanda->id)->findOrFail($orcamento);
+
+        $request->validate([
+            'motivo_rejeicao' => 'required|string',
+        ]);
+
+        $orcamento->rejeitar($request->motivo_rejeicao);
+
+        return redirect()->back()->with('success', 'Orçamento rejeitado.');
+    }
+
+    public function criarNegociacao(Request $request, Demanda $demanda, $orcamento)
+    {
+        $this->authorize('update', $demanda);
+
+        $orcamento = Orcamento::where('demanda_id', $demanda->id)->findOrFail($orcamento);
+
+        $validated = $request->validate([
+            'tipo' => 'required|in:desconto,parcelamento,prazo,contraproposta',
+            'valor_solicitado' => 'nullable|numeric|min:0',
+            'descricao' => 'required|string',
+        ]);
+
+        Negociacao::create([
+            'demanda_id' => $demanda->id,
+            'orcamento_id' => $orcamento->id,
+            'administradora_id' => $demanda->administradora_id,
+            'usuario_id' => Auth::id(),
+            'prestador_id' => $orcamento->prestador_id,
+            'tipo' => $validated['tipo'],
+            'valor_solicitado' => $validated['valor_solicitado'],
+            'descricao' => $validated['descricao'],
+            'status' => 'pendente',
+        ]);
+
+        return redirect()->back()->with('success', 'Solicitação de negociação enviada!');
     }
 }

@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class CondominioController extends Controller
 {
@@ -19,12 +20,15 @@ class CondominioController extends Controller
      */
     public function index()
     {
+        $this->authorize('viewAny', Condominio::class);
+        
         $condominios = Condominio::with(['tags', 'gerente'])
             ->orderBy('nome')
             ->paginate(15);
 
         return view('condominios.index', compact('condominios'));
     }
+
 
     /**
      * Show the form for creating a new resource.
@@ -206,5 +210,36 @@ class CondominioController extends Controller
 
         return redirect()->route('condominios.index')
             ->with('success', 'Condomínio removido com sucesso!');
+    }
+
+    public function gerarLink(Request $request, $id)
+    {
+        $condominio = Condominio::findOrFail($id);
+        $this->authorize('update', $condominio);
+
+        $validated = $request->validate([
+            'titulo' => 'required|string|max:255',
+        ]);
+
+        LinkCondominio::create([
+            'condominio_id' => $condominio->id,
+            'administradora_id' => $condominio->administradora_id,
+            'token' => LinkCondominio::gerarToken(),
+            'titulo' => $validated['titulo'],
+            'ativo' => true,
+        ]);
+
+        return redirect()->back()->with('success', 'Link gerado com sucesso!');
+    }
+
+    public function desativarLink($condominioId, $linkId)
+    {
+        $condominio = Condominio::findOrFail($condominioId);
+        $this->authorize('update', $condominio);
+
+        $link = LinkCondominio::where('condominio_id', $condominio->id)->findOrFail($linkId);
+        $link->update(['ativo' => false]);
+
+        return redirect()->back()->with('success', 'Link desativado!');
     }
 }

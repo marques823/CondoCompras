@@ -31,6 +31,8 @@ class RoleMiddleware
             }
         }
 
-        abort(403, 'Acesso negado para esta função.');
+        // Redireciona para página de erro 403 ao invés de abortar diretamente
+        // Isso permite que a view customizada seja exibida com botão de logout
+        return response()->view('errors.403', [], 403);
     }
 }

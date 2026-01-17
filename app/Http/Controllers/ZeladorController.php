@@ -20,14 +20,27 @@ class ZeladorController extends Controller
             return view('zelador.no_condo'); // Caso o zelador não tenha condomínio vinculado
         }
         
-        // Estatísticas (Global Scope já garante isolamento por administradora, e aqui filtramos por condomínio)
-        $stats = [
-            'total_demandas' => $condominio->demandas()->count(),
-            'demandas_abertas' => $condominio->demandas()->where('status', 'aberta')->count(),
-            'demandas_em_andamento' => $condominio->demandas()->where('status', 'em_andamento')->count(),
-            'demandas_recentes' => $condominio->demandas()->with('categoriaServico')->orderBy('created_at', 'desc')->limit(10)->get(),
-        ];
+        // Estatísticas para a view
+        $totalDemandas = $condominio->demandas()->count();
+        $demandasAbertas = $condominio->demandas()->where('status', 'aberta')->count();
+        $demandasEmAndamento = $condominio->demandas()->where('status', 'em_andamento')->count();
+        $demandasConcluidas = $condominio->demandas()->where('status', 'concluida')->count();
+        
+        // Demandas recentes
+        $demandasRecentes = $condominio->demandas()
+            ->with('categoriaServico')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
 
-        return view('zelador.dashboard', compact('condominio', 'stats'));
+        return view('zelador.dashboard', compact(
+            'condominio', 
+            'totalDemandas', 
+            'demandasAbertas', 
+            'demandasEmAndamento', 
+            'demandasConcluidas',
+            'demandasRecentes'
+        ));
     }
+
 }

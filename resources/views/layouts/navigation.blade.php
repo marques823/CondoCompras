@@ -12,17 +12,35 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    @if(Auth::user()->isZelador())
-                        <!-- Links para Zeladores -->
+                    @php $user = Auth::user(); @endphp
+
+                    @if($user->isZelador())
                         <x-nav-link :href="route('zelador.dashboard')" :active="request()->routeIs('zelador.dashboard')">
                             {{ __('Dashboard') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('zelador.demandas.index')" :active="request()->routeIs('zelador.demandas.*')">
+                        <x-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
                             {{ __('Minhas Demandas') }}
                         </x-nav-link>
-                    @elseif(Auth::user()->isAdministradora())
-                        <!-- Links para Administradoras -->
+
+                    @elseif($user->isAdministradora())
                         <x-nav-link :href="route('administradora.dashboard')" :active="request()->routeIs('administradora.dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
+                            {{ __('Condomínios') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
+                            {{ __('Demandas') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                            {{ __('Gerentes') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('administradora.config')" :active="request()->routeIs('administradora.config')">
+                            {{ __('Configurações') }}
+                        </x-nav-link>
+
+                    @elseif($user->isGerente())
+                        <x-nav-link :href="route('gerente.dashboard')" :active="request()->routeIs('gerente.dashboard')">
                             {{ __('Dashboard') }}
                         </x-nav-link>
                         <x-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
@@ -34,34 +52,11 @@
                         <x-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
                             {{ __('Demandas') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('orcamentos.index')" :active="request()->routeIs('orcamentos.*')">
-                            {{ __('Orçamentos') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('documentos.index')" :active="request()->routeIs('documentos.*')">
-                            {{ __('Documentos') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
-                            {{ __('Tags') }}
-                        </x-nav-link>
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-                            {{ __('Usuários') }}
+                            {{ __('Zeladores') }}
                         </x-nav-link>
-                    @elseif(Auth::user()->isGerente())
-                        <!-- Links para Gerentes -->
-                        <x-nav-link :href="route('gerente.dashboard')" :active="request()->routeIs('gerente.dashboard')">
-                            {{ __('Dashboard') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
-                            {{ __('Condomínios') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
-                            {{ __('Demandas') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-                            {{ __('Usuários') }}
-                        </x-nav-link>
-                    @elseif(Auth::user()->isAdmin())
-                        <!-- Links para Super Admin -->
+
+                    @elseif($user->isAdmin())
                         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                             {{ __('Dashboard') }}
                         </x-nav-link>
@@ -69,7 +64,7 @@
                             {{ __('Administradoras') }}
                         </x-nav-link>
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-                            {{ __('Usuários') }}
+                            {{ __('Usuários Global') }}
                         </x-nav-link>
                     @endif
                 </div>
@@ -80,7 +75,7 @@
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
-                            <div>{{ Auth::user()->name }}</div>
+                            <div>{{ Auth::user()->name }} (@if($user->isAdmin()) Admin @elseif($user->isAdministradora()) Adm. Empresa @elseif($user->isGerente()) Gerente @else Zelador @endif)</div>
 
                             <div class="ms-1">
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -98,7 +93,6 @@
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-
                             <x-dropdown-link :href="route('logout')"
                                     onclick="event.preventDefault();
                                                 this.closest('form').submit();">
@@ -122,71 +116,30 @@
     </div>
 
     <!-- Responsive Navigation Menu -->
-        <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            @if(Auth::user()->isZelador())
-                <!-- Links para Zeladores (Mobile) -->
+            @if($user->isZelador())
                 <x-responsive-nav-link :href="route('zelador.dashboard')" :active="request()->routeIs('zelador.dashboard')">
                     {{ __('Dashboard') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('zelador.demandas.index')" :active="request()->routeIs('zelador.demandas.*')">
-                    {{ __('Minhas Demandas') }}
-                </x-responsive-nav-link>
-            @elseif(Auth::user()->isAdministradora())
-                <!-- Links para Administradoras (Mobile) -->
+            @elseif($user->isAdministradora())
                 <x-responsive-nav-link :href="route('administradora.dashboard')" :active="request()->routeIs('administradora.dashboard')">
                     {{ __('Dashboard') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
                     {{ __('Condomínios') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('prestadores.index')" :active="request()->routeIs('prestadores.*')">
-                    {{ __('Prestadores') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
-                    {{ __('Demandas') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('orcamentos.index')" :active="request()->routeIs('orcamentos.*')">
-                    {{ __('Orçamentos') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('documentos.index')" :active="request()->routeIs('documentos.*')">
-                    {{ __('Documentos') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
-                    {{ __('Tags') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-                    {{ __('Usuários') }}
-                </x-responsive-nav-link>
-            @elseif(Auth::user()->isGerente())
-                <!-- Links para Gerentes (Mobile) -->
+            @elseif($user->isGerente())
                 <x-responsive-nav-link :href="route('gerente.dashboard')" :active="request()->routeIs('gerente.dashboard')">
                     {{ __('Dashboard') }}
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
-                    {{ __('Condomínios') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
-                    {{ __('Demandas') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-                    {{ __('Usuários') }}
-                </x-responsive-nav-link>
-            @elseif(Auth::user()->isAdmin())
-                <!-- Links para Super Admin (Mobile) -->
+            @elseif($user->isAdmin())
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                     {{ __('Dashboard') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('administradoras.index')" :active="request()->routeIs('administradoras.*')">
-                    {{ __('Administradoras') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-                    {{ __('Usuários') }}
                 </x-responsive-nav-link>
             @endif
         </div>
 
-        <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
             <div class="px-4">
                 <div class="font-medium text-base text-gray-800 dark:text-gray-200">{{ Auth::user()->name }}</div>
@@ -197,11 +150,8 @@
                 <x-responsive-nav-link :href="route('profile.edit')">
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
-
-                <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-
                     <x-responsive-nav-link :href="route('logout')"
                             onclick="event.preventDefault();
                                         this.closest('form').submit();">

@@ -2,11 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\Condominio;
+use App\Models\Prestador;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-class CondominioPolicy
+class PrestadorPolicy
 {
     /**
      * Determine whether the user can view any models.
@@ -17,17 +17,15 @@ class CondominioPolicy
         return $user->isAdmin() || $user->isAdministradora() || $user->isGerente();
     }
 
-
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Condominio $condominio): bool
+    public function view(User $user, Prestador $prestador): bool
     {
-        // Se for Super Admin, acesso livre
         if ($user->isAdmin()) return true;
-
+        
         // Pertence à mesma administradora?
-        return $user->administradora_id === $condominio->administradora_id;
+        return $user->administradora_id === $prestador->administradora_id;
     }
 
     /**
@@ -35,33 +33,29 @@ class CondominioPolicy
      */
     public function create(User $user): bool
     {
-        // Apenas Gerente pode criar condomínios (Administradora não cria diretamente)
+        // Apenas Gerente pode criar prestadores
         return $user->isGerente();
     }
-
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Condominio $condominio): bool
+    public function update(User $user, Prestador $prestador): bool
     {
         if ($user->isAdmin()) return true;
-
-        // Apenas se for da mesma administradora
-        // Administradora pode atualizar, mas Gerente é quem cria/gerencia operacionalmente
-        return $user->administradora_id === $condominio->administradora_id 
-            && ($user->isAdministradora() || $user->isGerente());
+        
+        // Apenas Gerente pode atualizar
+        return $user->administradora_id === $prestador->administradora_id && $user->isGerente();
     }
-
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Condominio $condominio): bool
+    public function delete(User $user, Prestador $prestador): bool
     {
         if ($user->isAdmin()) return true;
-
-        // Apenas Administradora pode excluir condomínios de sua empresa
-        return $user->administradora_id === $condominio->administradora_id && $user->isAdministradora();
+        
+        // Apenas Gerente pode excluir
+        return $user->administradora_id === $prestador->administradora_id && $user->isGerente();
     }
 }

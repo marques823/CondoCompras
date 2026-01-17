@@ -21,14 +21,28 @@ class GerenteController extends Controller
         $condominios = Condominio::all();
         $condominioIds = $condominios->pluck('id');
 
-        // Estatísticas
-        $stats = [
-            'total_condominios' => $condominios->count(),
-            'total_zeladores' => User::whereIn('condominio_id', $condominioIds)->whereHas('roles', fn($q) => $q->where('name', 'zelador'))->count(),
-            'total_demandas' => Demanda::whereIn('condominio_id', $condominioIds)->count(),
-            'demandas_recentes' => Demanda::whereIn('condominio_id', $condominioIds)->with(['condominio', 'usuario'])->orderBy('created_at', 'desc')->limit(10)->get(),
-        ];
+        // Estatísticas para a view
+        $totalCondominios = $condominios->count();
+        $totalZeladores = User::whereIn('condominio_id', $condominioIds)
+            ->whereHas('roles', fn($q) => $q->where('name', 'zelador'))
+            ->count();
+        $totalDemandas = Demanda::whereIn('condominio_id', $condominioIds)->count();
+        
+        // Listas recentes
+        $condominiosRecentes = Condominio::orderBy('created_at', 'desc')->limit(5)->get();
+        $demandasRecentes = Demanda::whereIn('condominio_id', $condominioIds)
+            ->with(['condominio', 'usuario'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
 
-        return view('gerente.dashboard', compact('stats'));
+        return view('gerente.dashboard', compact(
+            'totalCondominios',
+            'totalZeladores',
+            'totalDemandas',
+            'condominiosRecentes',
+            'demandasRecentes'
+        ));
     }
+
 }

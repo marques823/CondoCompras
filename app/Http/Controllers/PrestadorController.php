@@ -10,19 +10,21 @@ class PrestadorController extends Controller
 {
     public function index()
     {
-        // Admin não acessa esta área (redirecionado no middleware)
-        $prestadores = Prestador::daAdministradora(Auth::user()->administradora_id)
-            ->with('tags')
+        $this->authorize('viewAny', Prestador::class);
+        
+        $prestadores = Prestador::with('tags')
             ->orderBy('nome_razao_social')
             ->paginate(15);
 
         return view('prestadores.index', compact('prestadores'));
     }
 
+
     public function create()
     {
-        $tags = \App\Models\Tag::daAdministradora(Auth::user()->administradora_id)
-            ->porTipo('prestador')
+        $this->authorize('create', Prestador::class);
+        
+        $tags = \App\Models\Tag::porTipo('prestador')
             ->ativas()
             ->orderBy('ordem')
             ->orderBy('nome')
@@ -33,6 +35,8 @@ class PrestadorController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', Prestador::class);
+        
         $validated = $request->validate([
             'nome_razao_social' => 'required|string|max:255',
             'tipo' => 'required|in:fisica,juridica',
@@ -78,20 +82,19 @@ class PrestadorController extends Controller
 
     public function show($id)
     {
-        $prestador = Prestador::daAdministradora(Auth::user()->administradora_id)
-            ->with('tags')
-            ->findOrFail($id);
-
+        $prestador = Prestador::findOrFail($id);
+        $this->authorize('view', $prestador);
+        
+        $prestador->load('tags');
         return view('prestadores.show', compact('prestador'));
     }
 
     public function edit($id)
     {
-        $prestador = Prestador::daAdministradora(Auth::user()->administradora_id)
-            ->findOrFail($id);
+        $prestador = Prestador::findOrFail($id);
+        $this->authorize('update', $prestador);
 
-        $tags = \App\Models\Tag::daAdministradora(Auth::user()->administradora_id)
-            ->porTipo('prestador')
+        $tags = \App\Models\Tag::porTipo('prestador')
             ->ativas()
             ->orderBy('ordem')
             ->orderBy('nome')
@@ -104,8 +107,8 @@ class PrestadorController extends Controller
 
     public function update(Request $request, $id)
     {
-        $prestador = Prestador::daAdministradora(Auth::user()->administradora_id)
-            ->findOrFail($id);
+        $prestador = Prestador::findOrFail($id);
+        $this->authorize('update', $prestador);
 
         $validated = $request->validate([
             'nome_razao_social' => 'required|string|max:255',
@@ -148,8 +151,8 @@ class PrestadorController extends Controller
 
     public function destroy($id)
     {
-        $prestador = Prestador::daAdministradora(Auth::user()->administradora_id)
-            ->findOrFail($id);
+        $prestador = Prestador::findOrFail($id);
+        $this->authorize('delete', $prestador);
 
         $prestador->delete();
 
