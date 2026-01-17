@@ -110,6 +110,8 @@ class LinkPrestadorController extends Controller
 
             $orcamento->documentos()->create([
                 'empresa_id' => $link->demanda->empresa_id,
+                'condominio_id' => $link->demanda->condominio_id,
+                'demanda_id' => $link->demanda->id,
                 'prestador_id' => $link->prestador_id,
                 'orcamento_id' => $orcamento->id,
                 'tipo' => 'orcamento_pdf',
