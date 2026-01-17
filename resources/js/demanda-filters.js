@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const condominioAutocomplete = document.getElementById('condominio-autocomplete');
     const prestadoresContainer = document.getElementById('prestadores-container');
     const prestadoresSearch = document.getElementById('prestadores-search');
+    const tipoServicoInput = document.getElementById('tipo_servico');
+    const tipoServicoAutocomplete = document.getElementById('tipo-servico-autocomplete');
     
     // Dados dos condomínios vindo do backend
     const condominios = window.condominiosData || [];
@@ -140,9 +142,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Armazena tags selecionadas para filtro
     let selectedTags = [];
+    let tipoServicoFilter = '';
 
-    // Função para filtrar prestadores
+    // Função para filtrar prestadores (definida aqui para estar disponível antes)
     function filterPrestadores() {
+        // Atualiza o filtro de tipo de serviço
+        if (tipoServicoInput) {
+            tipoServicoFilter = normalize(tipoServicoInput.value.trim());
+        }
+        
         const searchTermRaw = prestadoresSearch.value.trim();
         const searchTerm = normalize(searchTermRaw);
         const cleanSearchTerm = searchTermRaw.replace(/\D/g, ''); // Apenas números para busca de CNPJ
@@ -157,6 +165,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const areasAtuacao = normalize(item.getAttribute('data-areas-atuacao'));
             const tags = item.getAttribute('data-tags') || '';
             const tagIds = tags ? tags.split(',').map(id => parseInt(id)) : [];
+
+            // Verifica filtro por tipo de serviço (nas áreas de atuação)
+            const tipoServicoMatches = !tipoServicoFilter || areasAtuacao.includes(tipoServicoFilter);
 
             // Verifica busca por texto
             let textMatches = !searchTerm;
@@ -178,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const tagMatches = selectedTags.length === 0 || 
                 selectedTags.some(tagId => tagIds.includes(parseInt(tagId)));
 
-            if (textMatches && tagMatches) {
+            if (textMatches && tagMatches && tipoServicoMatches) {
                 item.style.display = 'flex';
                 visibleCount++;
             } else {
@@ -188,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Mostra mensagem se não houver resultados
         let noResultsMsg = prestadoresContainer.querySelector('.prestadores-no-results');
-        if (visibleCount === 0 && (searchTerm || selectedTags.length > 0)) {
+        if (visibleCount === 0 && (searchTerm || selectedTags.length > 0 || tipoServicoFilter)) {
             if (!noResultsMsg) {
                 noResultsMsg = document.createElement('p');
                 noResultsMsg.className = 'prestadores-no-results text-sm text-gray-500 dark:text-gray-400 text-center py-4 w-full';
@@ -200,6 +211,76 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         updateSelectedCount();
+    }
+
+    // ========== TIPO DE SERVIÇO ==========
+    const categoriasServico = window.categoriasData || [];
+    
+    if (tipoServicoInput && tipoServicoAutocomplete) {
+        function renderTipoServicoSuggestions(searchTerm) {
+            if (!searchTerm || searchTerm.length < 1) {
+                tipoServicoAutocomplete.classList.add('hidden');
+                return;
+            }
+
+            const term = normalize(searchTerm.trim());
+            const filtered = categoriasServico.filter(c => {
+                const nome = normalize(c.nome || '');
+                return nome.includes(term);
+            });
+
+            if (filtered.length === 0) {
+                tipoServicoAutocomplete.innerHTML = '<div class="p-2 text-sm text-gray-500 dark:text-gray-400 text-center">Nenhuma categoria encontrada. Você pode digitar livremente.</div>';
+                tipoServicoAutocomplete.classList.remove('hidden');
+                return;
+            }
+
+            tipoServicoAutocomplete.innerHTML = filtered.map(c => {
+                return `
+                    <div class="tipo-servico-option p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-200 dark:border-gray-600 last:border-b-0" 
+                         data-nome="${c.nome}">
+                        <div class="font-medium text-gray-900 dark:text-gray-100">${c.nome}</div>
+                    </div>
+                `;
+            }).join('');
+
+            tipoServicoAutocomplete.querySelectorAll('.tipo-servico-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const nome = this.getAttribute('data-nome');
+                    tipoServicoInput.value = nome;
+                    tipoServicoAutocomplete.classList.add('hidden');
+                    filterPrestadores(); // Filtra prestadores ao selecionar
+                });
+            });
+
+            tipoServicoAutocomplete.classList.remove('hidden');
+        }
+
+        tipoServicoInput.addEventListener('input', function(e) {
+            const value = e.target.value;
+            renderTipoServicoSuggestions(value);
+            filterPrestadores(); // Filtra prestadores em tempo real
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!tipoServicoInput.contains(e.target) && !tipoServicoAutocomplete.contains(e.target)) {
+                tipoServicoAutocomplete.classList.add('hidden');
+            }
+        });
+
+        tipoServicoInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const firstOption = tipoServicoAutocomplete.querySelector('.tipo-servico-option');
+                if (firstOption) {
+                    firstOption.click();
+                } else {
+                    filterPrestadores();
+                }
+            } else if (e.key === 'Escape') {
+                tipoServicoAutocomplete.classList.add('hidden');
+            }
+        });
     }
 
     // Event listeners para busca de prestadores
@@ -281,6 +362,8 @@ document.addEventListener('DOMContentLoaded', function() {
     clearFiltersBtn.addEventListener('click', function() {
         prestadoresSearch.value = '';
         selectedTags = [];
+        if (tipoServicoInput) tipoServicoInput.value = '';
+        tipoServicoFilter = '';
         tagFilters.forEach(filter => {
             filter.checked = false;
             filter.closest('label').classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
