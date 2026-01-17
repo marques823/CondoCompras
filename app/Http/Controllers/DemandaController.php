@@ -179,7 +179,9 @@ class DemandaController extends Controller
             abort(403);
         }
 
-        $demanda->load(['condominio', 'categoriaServico', 'usuario', 'prestadores', 'orcamentos', 'links']);
+        $demanda->load(['condominio', 'categoriaServico', 'usuario', 'prestadores', 'orcamentos' => function($query) {
+            $query->with('negociacoes');
+        }, 'links', 'negociacoes']);
 
         // Prestadores disponíveis para adicionar (excluindo os já associados)
         $prestadoresIds = $demanda->prestadores->pluck('id')->toArray();
@@ -396,5 +398,50 @@ class DemandaController extends Controller
 
         return redirect()->back()
             ->with('success', 'Orçamento rejeitado com sucesso!');
+    }
+
+    public function criarNegociacao(Request $request, Demanda $demanda, $orcamento)
+    {
+        if ($demanda->empresa_id !== Auth::user()->empresa_id) {
+            abort(403);
+        }
+
+        $orcamento = \App\Models\Orcamento::where('demanda_id', $demanda->id)
+            ->where('id', $orcamento)
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'tipo' => 'required|in:desconto,parcelamento,contraproposta',
+            'valor_solicitado' => 'nullable|numeric|min:0.01|required_if:tipo,contraproposta',
+            'mensagem_solicitacao' => 'nullable|string|max:1000',
+        ]);
+
+        // Validação específica por tipo
+        if ($validated['tipo'] === 'contraproposta') {
+            if ($validated['valor_solicitado'] >= $orcamento->valor) {
+                return redirect()->back()
+                    ->withErrors(['valor_solicitado' => 'O valor da contraproposta deve ser menor que o valor do orçamento.'])
+                    ->withInput();
+            }
+        } else {
+            // Para desconto e parcelamento, o valor será definido pelo prestador
+            $validated['valor_solicitado'] = null;
+        }
+
+        \App\Models\Negociacao::create([
+            'orcamento_id' => $orcamento->id,
+            'demanda_id' => $demanda->id,
+            'prestador_id' => $orcamento->prestador_id,
+            'tipo' => $validated['tipo'],
+            'valor_original' => $orcamento->valor,
+            'valor_solicitado' => $validated['valor_solicitado'],
+            'parcelas' => null, // Será definido pelo prestador
+            'status' => 'pendente',
+            'mensagem_solicitacao' => $validated['mensagem_solicitacao'] ?? null,
+            'criado_por' => Auth::id(),
+        ]);
+
+        return redirect()->back()
+            ->with('success', 'Negociação criada com sucesso! O prestador será notificado.');
     }
 }
