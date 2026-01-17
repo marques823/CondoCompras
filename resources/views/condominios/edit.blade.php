@@ -150,7 +150,7 @@
                                         <div class="mb-4 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
                                             <p class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Zelador atual:</p>
                                             <p class="text-sm text-blue-800 dark:text-blue-200"><strong>Nome:</strong> {{ $zelador->name }}</p>
-                                            <p class="text-sm text-blue-800 dark:text-blue-200"><strong>E-mail:</strong> {{ $zelador->email }}</p>
+                                            <p class="text-sm text-blue-800 dark:text-blue-200"><strong>Telefone:</strong> {{ $zelador->telefone ?? 'Não informado' }}</p>
                                             <p class="text-xs text-blue-600 dark:text-blue-300 mt-2">Para alterar, preencha os campos abaixo com novos dados.</p>
                                         </div>
                                     @else
@@ -165,11 +165,11 @@
                                             <x-input-error :messages="$errors->get('zelador_nome')" class="mt-2" />
                                         </div>
 
-                                        <!-- Email do Zelador -->
+                                        <!-- Telefone do Zelador -->
                                         <div>
-                                            <x-input-label for="zelador_email" :value="__('E-mail do Zelador')" />
-                                            <x-text-input id="zelador_email" class="block mt-1 w-full" type="email" name="zelador_email" :value="old('zelador_email', $zelador->email ?? '')" />
-                                            <x-input-error :messages="$errors->get('zelador_email')" class="mt-2" />
+                                            <x-input-label for="zelador_telefone" :value="__('Telefone/Celular do Zelador')" />
+                                            <x-text-input id="zelador_telefone" class="block mt-1 w-full" type="tel" name="zelador_telefone" :value="old('zelador_telefone', $zelador->telefone ?? '')" placeholder="(00) 00000-0000" />
+                                            <x-input-error :messages="$errors->get('zelador_telefone')" class="mt-2" />
                                         </div>
 
                                         <!-- Senha do Zelador -->

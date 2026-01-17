@@ -49,6 +49,11 @@ class LinkPrestadorController extends Controller
             $query->where('prestador_id', $prestador->id)->orderBy('created_at', 'desc');
         }]);
 
+        // Carrega o zelador do condomínio
+        $zelador = \App\Models\User::where('condominio_id', $demanda->condominio_id)
+            ->where('perfil', 'zelador')
+            ->first();
+
         // Verifica se já enviou orçamento
         $jaEnviouOrcamento = $demanda->orcamentos->where('prestador_id', $prestador->id)->isNotEmpty();
 
@@ -59,7 +64,7 @@ class LinkPrestadorController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('prestador.demanda', compact('link', 'demanda', 'prestador', 'jaEnviouOrcamento', 'negociacoes'));
+        return view('prestador.demanda', compact('link', 'demanda', 'prestador', 'jaEnviouOrcamento', 'negociacoes', 'zelador'));
     }
 
     /**

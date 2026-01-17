@@ -12,9 +12,101 @@
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Header -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ $demanda->titulo }}</h1>
-                <p class="text-gray-600">Condomínio: <strong>{{ $demanda->condominio->nome }}</strong></p>
+                <h1 class="text-2xl font-bold text-gray-900 mb-4">{{ $demanda->titulo }}</h1>
+                <p class="text-gray-600 mb-4">Condomínio: <strong>{{ $demanda->condominio->nome }}</strong></p>
             </div>
+
+            <!-- Informações do Condomínio -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Informações do Condomínio</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nome</label>
+                        <p class="mt-1 text-gray-900">{{ $demanda->condominio->nome }}</p>
+                    </div>
+
+                    @if($demanda->condominio->cnpj)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">CNPJ</label>
+                        <p class="mt-1 text-gray-900">{{ $demanda->condominio->cnpj }}</p>
+                    </div>
+                    @endif
+
+                    @if($demanda->condominio->endereco)
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700">Endereço</label>
+                        <p class="mt-1 text-gray-900">
+                            {{ $demanda->condominio->endereco }}
+                            @if($demanda->condominio->numero), {{ $demanda->condominio->numero }}@endif
+                            @if($demanda->condominio->complemento) - {{ $demanda->condominio->complemento }}@endif
+                        </p>
+                    </div>
+                    @endif
+
+                    @if($demanda->condominio->bairro)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Bairro</label>
+                        <p class="mt-1 text-gray-900">{{ $demanda->condominio->bairro }}</p>
+                    </div>
+                    @endif
+
+                    @if($demanda->condominio->cidade)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Cidade</label>
+                        <p class="mt-1 text-gray-900">
+                            {{ $demanda->condominio->cidade }}
+                            @if($demanda->condominio->estado) - {{ $demanda->condominio->estado }}@endif
+                        </p>
+                    </div>
+                    @endif
+
+                    @if($demanda->condominio->cep)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">CEP</label>
+                        <p class="mt-1 text-gray-900">{{ $demanda->condominio->cep }}</p>
+                    </div>
+                    @endif
+
+                    @if($demanda->condominio->sindico_nome)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Síndico</label>
+                        <p class="mt-1 text-gray-900">{{ $demanda->condominio->sindico_nome }}</p>
+                        @if($demanda->condominio->sindico_telefone)
+                            <p class="mt-1 text-sm text-gray-600">Tel: {{ $demanda->condominio->sindico_telefone }}</p>
+                        @endif
+                        @if($demanda->condominio->sindico_email)
+                            <p class="mt-1 text-sm text-gray-600">Email: {{ $demanda->condominio->sindico_email }}</p>
+                        @endif
+                    </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Contato do Zelador -->
+            @if($zelador)
+            <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold text-blue-900 mb-4">Contato do Zelador</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-800">Nome</label>
+                        <p class="mt-1 text-blue-900 font-semibold">{{ $zelador->name }}</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-blue-800">Telefone/Celular</label>
+                        <p class="mt-1 text-blue-900">
+                            @if($zelador->telefone)
+                                <a href="tel:{{ preg_replace('/[^0-9]/', '', $zelador->telefone) }}" class="hover:underline">{{ $zelador->telefone }}</a>
+                            @else
+                                <span class="text-gray-500">Não informado</span>
+                            @endif
+                        </p>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             <!-- Informações da Demanda -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
