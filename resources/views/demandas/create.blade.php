@@ -32,6 +32,23 @@
                                 <x-input-error :messages="$errors->get('condominio_id')" class="mt-2" />
                             </div>
 
+                            <!-- Tipo de Serviço -->
+                            <div class="md:col-span-2">
+                                <x-input-label for="tipo_servico" :value="__('Tipo de Serviço')" />
+                                <div class="relative">
+                                    <input type="text" 
+                                           id="tipo_servico" 
+                                           class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" 
+                                           placeholder="Digite ou escolha o tipo de serviço (ex: CFTV, Elétrica, Pintura...)"
+                                           autocomplete="off"
+                                           value="{{ old('tipo_servico') }}">
+                                    <div id="tipo-servico-autocomplete" class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto hidden">
+                                        <!-- Sugestões de categorias serão inseridas aqui -->
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Digite o tipo de serviço para filtrar automaticamente os prestadores</p>
+                            </div>
+
                             <!-- Título -->
                             <div class="md:col-span-2">
                                 <x-input-label for="titulo" :value="__('Título da Demanda')" />
@@ -148,6 +165,7 @@
     </div>
 
     <div id="condominios-data" data-condominios='@json($condominiosData)' style="display: none;"></div>
+    <div id="categorias-data" data-categorias='@json($categorias ?? [])' style="display: none;"></div>
 
     <script>
         const condominiosDataEl = document.getElementById('condominios-data');
@@ -155,6 +173,13 @@
             window.condominiosData = JSON.parse(condominiosDataEl.getAttribute('data-condominios') || '[]');
         } else {
             window.condominiosData = [];
+        }
+        
+        const categoriasDataEl = document.getElementById('categorias-data');
+        if (categoriasDataEl) {
+            window.categoriasData = JSON.parse(categoriasDataEl.getAttribute('data-categorias') || '[]');
+        } else {
+            window.categoriasData = [];
         }
     </script>
 </x-app-layout>

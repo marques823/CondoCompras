@@ -91,9 +91,27 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                                 @if($link)
-                                                    <a href="{{ route('prestador.link.show', $link->token) }}" target="_blank" class="text-blue-500 hover:text-blue-700">
-                                                        Ver Link
-                                                    </a>
+                                                    @php
+                                                        $linkUrl = route('prestador.link.show', $link->token);
+                                                    @endphp
+                                                    <div class="flex items-center gap-2" data-link-url="{{ $linkUrl }}" data-prestador-nome="{{ $prestador->nome_razao_social }}" data-link-id="{{ $link->id }}">
+                                                        <button type="button" 
+                                                                class="copiar-link-btn inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                                                                title="Copiar link">
+                                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                                            </svg>
+                                                            <span class="copiar-texto">Copiar</span>
+                                                        </button>
+                                                        <button type="button" 
+                                                                class="compartilhar-link-btn inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                                                                title="Compartilhar link">
+                                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
+                                                            </svg>
+                                                            Compartilhar
+                                                        </button>
+                                                    </div>
                                                 @else
                                                     <span class="text-gray-400">-</span>
                                                 @endif
@@ -154,4 +172,161 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Configura event listeners para os botões
+        document.addEventListener('DOMContentLoaded', function() {
+            // Botões de copiar
+            document.querySelectorAll('.copiar-link-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const container = this.closest('[data-link-url]');
+                    const url = container.getAttribute('data-link-url');
+                    const linkId = container.getAttribute('data-link-id');
+                    copiarLink(url, linkId, this);
+                });
+            });
+
+            // Botões de compartilhar
+            document.querySelectorAll('.compartilhar-link-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const container = this.closest('[data-link-url]');
+                    const url = container.getAttribute('data-link-url');
+                    const prestadorNome = container.getAttribute('data-prestador-nome');
+                    compartilharLink(url, prestadorNome);
+                });
+            });
+        });
+
+        function copiarLink(url, linkId, button) {
+            // Usa a Clipboard API moderna
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(function() {
+                    mostrarFeedbackBotao(button, 'Copiado!');
+                    mostrarFeedback('Link copiado!', 'success', linkId);
+                }).catch(function(err) {
+                    console.error('Erro ao copiar:', err);
+                    copiarFallback(url, linkId, button);
+                });
+            } else {
+                // Fallback para navegadores antigos
+                copiarFallback(url, linkId, button);
+            }
+        }
+
+        function copiarFallback(url, linkId, button) {
+            // Cria um elemento temporário
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    mostrarFeedbackBotao(button, 'Copiado!');
+                    mostrarFeedback('Link copiado!', 'success', linkId);
+                } else {
+                    mostrarFeedback('Não foi possível copiar. Link: ' + url, 'error', linkId);
+                }
+            } catch (err) {
+                console.error('Erro ao copiar:', err);
+                mostrarFeedback('Erro ao copiar. Tente selecionar manualmente.', 'error', linkId);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        function mostrarFeedbackBotao(button, texto) {
+            if (!button) return;
+            
+            const textoElemento = button.querySelector('.copiar-texto');
+            const svgElemento = button.querySelector('svg');
+            if (!textoElemento) return;
+            
+            // Salva o texto original se ainda não foi salvo
+            if (!button.dataset.originalText) {
+                button.dataset.originalText = textoElemento.textContent.trim();
+            }
+            
+            // Altera o texto do botão
+            textoElemento.textContent = texto;
+            
+            // Altera APENAS a cor do texto e ícone para verde
+            textoElemento.classList.add('text-green-600', 'dark:text-green-400', 'font-bold');
+            if (svgElemento) {
+                svgElemento.classList.add('text-green-600', 'dark:text-green-400');
+            }
+            button.disabled = true;
+            
+            // Restaura após 2 segundos
+            setTimeout(function() {
+                const originalText = button.dataset.originalText || 'Copiar';
+                textoElemento.textContent = originalText;
+                textoElemento.classList.remove('text-green-600', 'dark:text-green-400', 'font-bold');
+                if (svgElemento) {
+                    svgElemento.classList.remove('text-green-600', 'dark:text-green-400');
+                }
+                button.disabled = false;
+            }, 2000);
+        }
+
+        function compartilharLink(url, prestadorNome) {
+            const title = 'Demanda: {{ $demanda->titulo }}';
+            const text = 'Olá! Você foi convidado para enviar um orçamento para a demanda: {{ $demanda->titulo }}. Acesse o link para ver os detalhes:';
+
+            // Tenta usar a Web Share API (Mobile)
+            if (navigator.share) {
+                navigator.share({
+                    title: title,
+                    text: text + ' ' + url,
+                    url: url,
+                }).then(function() {
+                    mostrarFeedback('Link compartilhado!', 'success', null);
+                }).catch(function(err) {
+                    // Usuário cancelou ou erro ocorreu
+                    if (err.name !== 'AbortError') {
+                        console.error('Erro ao compartilhar:', err);
+                        compartilharWhatsApp(url, text);
+                    }
+                });
+            } else {
+                // Fallback para WhatsApp (Desktop/Outros)
+                compartilharWhatsApp(url, text);
+            }
+        }
+
+        function compartilharWhatsApp(url, text) {
+            const encodedText = encodeURIComponent(text + ' ' + url);
+            window.open('https://wa.me/?text=' + encodedText, '_blank');
+        }
+
+        function mostrarFeedback(mensagem, tipo, linkId) {
+            // Remove feedbacks anteriores
+            const feedbacksAnteriores = document.querySelectorAll('.link-feedback');
+            feedbacksAnteriores.forEach(el => el.remove());
+
+            // Cria elemento de feedback
+            const feedback = document.createElement('div');
+            feedback.className = 'link-feedback fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 ' + 
+                (tipo === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white');
+            feedback.textContent = mensagem;
+
+            document.body.appendChild(feedback);
+
+            // Remove após 3 segundos
+            setTimeout(function() {
+                feedback.style.opacity = '0';
+                feedback.style.transform = 'translateY(-10px)';
+                setTimeout(function() {
+                    if (feedback.parentNode) {
+                        feedback.parentNode.removeChild(feedback);
+                    }
+                }, 300);
+            }, 3000);
+        }
+    </script>
 </x-app-layout>

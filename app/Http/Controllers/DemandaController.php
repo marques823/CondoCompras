@@ -40,6 +40,11 @@ class DemandaController extends Controller
             ->orderBy('nome')
             ->get();
 
+        // Categorias de serviços para sugestões
+        $categorias = \App\Models\CategoriaServico::ativas()
+            ->orderBy('nome')
+            ->get();
+
         // Prepara dados dos condomínios para JavaScript
         $condominiosData = $condominios->map(function($c) {
             return [
@@ -58,7 +63,7 @@ class DemandaController extends Controller
             ];
         })->values();
 
-        return view('demandas.create', compact('condominios', 'prestadores', 'tags', 'condominiosData'));
+        return view('demandas.create', compact('condominios', 'prestadores', 'tags', 'condominiosData', 'categorias'));
     }
 
     public function store(Request $request)
