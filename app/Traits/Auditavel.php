@@ -31,7 +31,7 @@ trait Auditavel
     public function registrarAuditoria(string $acao, $dadosAnteriores = null, $dadosNovos = null): void
     {
         Auditoria::create([
-            'empresa_id' => $this->empresa_id ?? Auth::user()?->empresa_id,
+            'administradora_id' => $this->administradora_id ?? Auth::user()?->administradora_id,
             'usuario_id' => Auth::id(),
             'modelo' => class_basename($this),
             'modelo_id' => $this->id,

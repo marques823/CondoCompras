@@ -377,7 +377,7 @@
         <div class="flex items-center justify-center min-h-screen p-4">
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:max-w-md w-full p-6">
                 <h3 class="text-lg font-medium mb-4">Adicionar Prestadores</h3>
-                <form method="POST" action="{{ route('demandas.adicionar-prestadores', $demanda) }}">
+                <form method="POST" action="{{ route('demandas.adicionar-prestador', $demanda) }}">
                     @csrf
                     <div class="max-h-60 overflow-y-auto mb-6">
                         @forelse($prestadoresDisponiveis ?? [] as $p)

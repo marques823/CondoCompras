@@ -58,7 +58,7 @@ class CondominioPublicoController extends Controller
 
         // Cria a demanda vinculada ao condomínio e empresa do link
         $demanda = \App\Models\Demanda::create([
-            'empresa_id' => $link->empresa_id,
+            'administradora_id' => $link->administradora_id,
             'condominio_id' => $condominio->id,
             'categoria_servico_id' => $validated['categoria_servico_id'] ?? null,
             'usuario_id' => null, // Demanda pública não tem usuário específico

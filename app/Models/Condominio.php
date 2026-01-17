@@ -7,13 +7,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\BelongsToAdministradora;
 
 class Condominio extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToAdministradora;
 
     protected $fillable = [
-        'empresa_id',
+        'administradora_id',
+        'gerente_id',
         'nome',
         'cnpj',
         'endereco',
@@ -35,11 +37,27 @@ class Condominio extends Model
     ];
 
     /**
-     * Relacionamento com Empresa
+     * Relacionamento com Administradora
      */
-    public function empresa(): BelongsTo
+    public function administradora(): BelongsTo
     {
-        return $this->belongsTo(Empresa::class);
+        return $this->belongsTo(Administradora::class, 'administradora_id');
+    }
+
+    /**
+     * Relacionamento com Gerente
+     */
+    public function gerente(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'gerente_id');
+    }
+
+    /**
+     * Relacionamento com Zeladores
+     */
+    public function zeladores(): HasMany
+    {
+        return $this->hasMany(Zelador::class);
     }
 
     /**
@@ -75,11 +93,11 @@ class Condominio extends Model
     }
 
     /**
-     * Scope para filtrar por empresa
+     * Scope para filtrar por administradora
      */
-    public function scopeDaEmpresa($query, $empresaId)
+    public function scopeDaAdministradora($query, $id)
     {
-        return $query->where('empresa_id', $empresaId);
+        return $query->where('administradora_id', $id);
     }
 
     /**

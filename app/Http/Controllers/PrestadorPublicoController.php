@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Empresa;
+use App\Models\Administradora;
 use App\Models\Prestador;
 use Illuminate\Http\Request;
 
@@ -17,7 +17,7 @@ class PrestadorPublicoController extends Controller
         
         // Se houver token na URL, carrega a empresa
         if ($request->has('token')) {
-            $empresa = Empresa::where('token_cadastro', $request->token)
+            $empresa = Administradora::where('token_cadastro', $request->token)
                 ->where('ativo', true)
                 ->first();
         }
@@ -31,7 +31,7 @@ class PrestadorPublicoController extends Controller
     public function store(Request $request)
     {
         // Validação do token de empresa (obrigatório para cadastro público)
-        $empresa = Empresa::where('token_cadastro', $request->token_empresa)
+        $empresa = Administradora::where('token_cadastro', $request->token_empresa)
             ->where('ativo', true)
             ->first();
 
@@ -61,7 +61,7 @@ class PrestadorPublicoController extends Controller
         // Verifica se já existe prestador com mesmo CPF/CNPJ na empresa
         if ($validated['cpf_cnpj']) {
             $cpfCnpjLimpo = preg_replace('/[^0-9]/', '', $validated['cpf_cnpj']);
-            $prestadorExistente = Prestador::daEmpresa($empresa->id)
+            $prestadorExistente = Prestador::daAdministradora($empresa->id)
                 ->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '/', ''), '-', ''), ' ', '') = ?", [$cpfCnpjLimpo])
                 ->first();
 
@@ -74,7 +74,7 @@ class PrestadorPublicoController extends Controller
 
         // Verifica se já existe prestador com mesmo email na empresa
         if ($validated['email']) {
-            $prestadorExistente = Prestador::daEmpresa($empresa->id)
+            $prestadorExistente = Prestador::daAdministradora($empresa->id)
                 ->where('email', $validated['email'])
                 ->first();
 
@@ -86,7 +86,7 @@ class PrestadorPublicoController extends Controller
         }
 
         // Cria o prestador
-        $validated['empresa_id'] = $empresa->id;
+        $validated['administradora_id'] = $empresa->id;
         $validated['ativo'] = true; // Prestadores cadastrados publicamente começam ativos
 
         unset($validated['token_empresa']);

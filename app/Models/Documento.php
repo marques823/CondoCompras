@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\BelongsToAdministradora;
 
 class Documento extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToAdministradora;
 
     protected $fillable = [
-        'empresa_id',
+        'administradora_id',
         'condominio_id',
         'demanda_id',
         'orcamento_id',
@@ -32,11 +33,11 @@ class Documento extends Model
     ];
 
     /**
-     * Relacionamento com Empresa
+     * Relacionamento com Administradora
      */
-    public function empresa(): BelongsTo
+    public function administradora(): BelongsTo
     {
-        return $this->belongsTo(Empresa::class);
+        return $this->belongsTo(Administradora::class, 'administradora_id');
     }
 
     /**
@@ -95,10 +96,10 @@ class Documento extends Model
     }
 
     /**
-     * Scope para filtrar por empresa
+     * Scope para filtrar por administradora
      */
-    public function scopeDaEmpresa($query, $empresaId)
+    public function scopeDaAdministradora($query, $id)
     {
-        return $query->where('empresa_id', $empresaId);
+        return $query->where('administradora_id', $id);
     }
 }
