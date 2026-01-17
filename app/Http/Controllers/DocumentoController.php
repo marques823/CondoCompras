@@ -18,4 +18,45 @@ class DocumentoController extends Controller
 
         return view('documentos.index', compact('documentos'));
     }
+
+    /**
+     * Visualiza o documento em nova aba
+     */
+    public function visualizar(Documento $documento)
+    {
+        // Verifica se o documento pertence à empresa do usuário
+        if ($documento->empresa_id !== Auth::user()->empresa_id) {
+            abort(403);
+        }
+
+        // Verifica se o arquivo existe
+        if (!Storage::disk('public')->exists($documento->caminho)) {
+            abort(404, 'Arquivo não encontrado.');
+        }
+
+        $caminhoCompleto = Storage::disk('public')->path($documento->caminho);
+
+        return response()->file($caminhoCompleto, [
+            'Content-Type' => $documento->mime_type,
+            'Content-Disposition' => 'inline; filename="' . $documento->nome_original . '"',
+        ]);
+    }
+
+    /**
+     * Faz o download do documento
+     */
+    public function download(Documento $documento)
+    {
+        // Verifica se o documento pertence à empresa do usuário
+        if ($documento->empresa_id !== Auth::user()->empresa_id) {
+            abort(403);
+        }
+
+        // Verifica se o arquivo existe
+        if (!Storage::disk('public')->exists($documento->caminho)) {
+            abort(404, 'Arquivo não encontrado.');
+        }
+
+        return Storage::disk('public')->download($documento->caminho, $documento->nome_original);
+    }
 }
