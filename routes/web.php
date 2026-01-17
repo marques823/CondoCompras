@@ -40,6 +40,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserBelongsToE
     Route::delete('demandas/{demanda}/prestadores/{prestador}', [DemandaController::class, 'removerPrestador'])->name('demandas.remover-prestador');
     Route::post('demandas/{demanda}/orcamentos/{orcamento}/aprovar', [DemandaController::class, 'aprovarOrcamento'])->name('demandas.aprovar-orcamento');
     Route::post('demandas/{demanda}/orcamentos/{orcamento}/rejeitar', [DemandaController::class, 'rejeitarOrcamento'])->name('demandas.rejeitar-orcamento');
+    Route::post('demandas/{demanda}/orcamentos/{orcamento}/negociacao', [DemandaController::class, 'criarNegociacao'])->name('demandas.criar-negociacao');
 
     // Orçamentos
     Route::resource('orcamentos', OrcamentoController::class);
@@ -56,6 +57,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserBelongsToE
 // Rotas públicas para prestadores (sem autenticação)
 Route::get('/prestador/{token}', [LinkPrestadorController::class, 'show'])->name('prestador.link.show');
 Route::post('/prestador/{token}/orcamento', [LinkPrestadorController::class, 'enviarOrcamento'])->name('prestador.link.orcamento');
+Route::post('/prestador/{token}/negociacoes/{negociacao}/aceitar', [LinkPrestadorController::class, 'aceitarNegociacao'])->name('prestador.link.aceitar-negociacao');
+Route::post('/prestador/{token}/negociacoes/{negociacao}/recusar', [LinkPrestadorController::class, 'recusarNegociacao'])->name('prestador.link.recusar-negociacao');
 
 // API para busca de CNPJ
 Route::get('/api/buscar-cnpj', [\App\Http\Controllers\ApiController::class, 'buscarCNPJ'])->name('api.buscar-cnpj');

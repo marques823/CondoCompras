@@ -95,6 +95,14 @@ class Demanda extends Model
     }
 
     /**
+     * Relacionamento com Negociações
+     */
+    public function negociacoes(): HasMany
+    {
+        return $this->hasMany(Negociacao::class);
+    }
+
+    /**
      * Scope para filtrar por empresa
      */
     public function scopeDaEmpresa($query, $empresaId)

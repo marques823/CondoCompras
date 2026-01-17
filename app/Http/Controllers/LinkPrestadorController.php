@@ -6,6 +6,7 @@ use App\Models\LinkPrestador;
 use App\Models\Demanda;
 use App\Models\Prestador;
 use App\Models\Orcamento;
+use App\Models\Negociacao;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -51,7 +52,14 @@ class LinkPrestadorController extends Controller
         // Verifica se já enviou orçamento
         $jaEnviouOrcamento = $demanda->orcamentos->where('prestador_id', $prestador->id)->isNotEmpty();
 
-        return view('prestador.demanda', compact('link', 'demanda', 'prestador', 'jaEnviouOrcamento'));
+        // Carrega negociações pendentes para os orçamentos deste prestador
+        $orcamentosIds = $demanda->orcamentos->where('prestador_id', $prestador->id)->pluck('id')->toArray();
+        $negociacoes = Negociacao::whereIn('orcamento_id', $orcamentosIds)
+            ->where('status', 'pendente')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('prestador.demanda', compact('link', 'demanda', 'prestador', 'jaEnviouOrcamento', 'negociacoes'));
     }
 
     /**
@@ -166,5 +174,76 @@ class LinkPrestadorController extends Controller
         }
 
         return $links;
+    }
+
+    /**
+     * Prestador aceita uma negociação
+     */
+    public function aceitarNegociacao(Request $request, string $token, Negociacao $negociacao)
+    {
+        $link = LinkPrestador::where('token', $token)->firstOrFail();
+
+        // Verifica se a negociação pertence ao prestador do link
+        if ($negociacao->prestador_id !== $link->prestador_id || $negociacao->demanda_id !== $link->demanda_id) {
+            abort(403, 'Negociação não pertence a este prestador.');
+        }
+
+        // Verifica se a negociação está pendente
+        if ($negociacao->status !== 'pendente') {
+            return redirect()->route('prestador.link.show', $token)
+                ->withErrors(['error' => 'Esta negociação já foi respondida.']);
+        }
+
+        $validated = $request->validate([
+            'mensagem_resposta' => 'nullable|string|max:1000',
+            'valor_solicitado' => 'nullable|numeric|min:0.01|required_unless:tipo,contraproposta',
+            'parcelas' => 'nullable|integer|min:2|required_if:tipo,parcelamento',
+        ]);
+        
+        // Para contraproposta, o valor já vem da negociação original
+        if ($negociacao->tipo === 'contraproposta') {
+            $validated['valor_solicitado'] = $negociacao->valor_solicitado;
+        }
+
+        // Para desconto e parcelamento, atualiza os valores escolhidos pelo prestador
+        if ($negociacao->tipo === 'desconto' || $negociacao->tipo === 'parcelamento') {
+            $negociacao->update([
+                'valor_solicitado' => $validated['valor_solicitado'],
+                'parcelas' => $validated['parcelas'] ?? null,
+            ]);
+        }
+
+        $negociacao->aceitar($validated['mensagem_resposta'] ?? null);
+
+        return redirect()->route('prestador.link.show', $token)
+            ->with('success', 'Negociação aceita com sucesso!');
+    }
+
+    /**
+     * Prestador recusa uma negociação
+     */
+    public function recusarNegociacao(Request $request, string $token, Negociacao $negociacao)
+    {
+        $link = LinkPrestador::where('token', $token)->firstOrFail();
+
+        // Verifica se a negociação pertence ao prestador do link
+        if ($negociacao->prestador_id !== $link->prestador_id || $negociacao->demanda_id !== $link->demanda_id) {
+            abort(403, 'Negociação não pertence a este prestador.');
+        }
+
+        // Verifica se a negociação está pendente
+        if ($negociacao->status !== 'pendente') {
+            return redirect()->route('prestador.link.show', $token)
+                ->withErrors(['error' => 'Esta negociação já foi respondida.']);
+        }
+
+        $validated = $request->validate([
+            'mensagem_resposta' => 'nullable|string|max:1000',
+        ]);
+
+        $negociacao->recusar($validated['mensagem_resposta'] ?? null);
+
+        return redirect()->route('prestador.link.show', $token)
+            ->with('success', 'Negociação recusada.');
     }
 }

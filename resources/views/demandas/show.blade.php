@@ -192,9 +192,10 @@
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                                 @if($orcamento->status === 'recebido')
-                                                    <div class="flex gap-2">
+                                                    <div class="flex gap-2 flex-wrap">
                                                         <button type="button" onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ $orcamento->prestador->nome_razao_social }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
                                                         <button type="button" onclick="abrirModalRejeitarOrcamento({{ $orcamento->id }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-red-600 hover:text-red-900">Rejeitar</button>
+                                                        <button type="button" onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
                                                     </div>
                                                 @else
                                                     <span class="text-gray-400">-</span>
@@ -204,6 +205,120 @@
                                     @endforeach
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                    @endif
+
+                    @php
+                        $negociacoesRespondidas = \App\Models\Negociacao::whereIn('orcamento_id', $demanda->orcamentos->pluck('id'))
+                            ->whereIn('status', ['aceita', 'recusada'])
+                            ->with(['orcamento', 'prestador'])
+                            ->orderBy('respondido_em', 'desc')
+                            ->get();
+                    @endphp
+
+                    @if($negociacoesRespondidas->count() > 0)
+                    <div class="mt-6">
+                        <h3 class="text-lg font-semibold mb-4">Negociações Respondidas</h3>
+                        <div class="overflow-x-auto">
+                            <div class="space-y-4">
+                                @foreach($negociacoesRespondidas as $negociacao)
+                                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                                        <div class="flex justify-between items-start mb-3">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-3 mb-2">
+                                                    <span class="px-3 py-1 text-xs font-semibold rounded-full
+                                                        @if($negociacao->status === 'aceita') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                                        @else bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                                        @endif">
+                                                        {{ ucfirst($negociacao->status) }}
+                                                    </span>
+                                                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                                        @if($negociacao->tipo === 'desconto')
+                                                            Desconto
+                                                        @elseif($negociacao->tipo === 'parcelamento')
+                                                            Parcelamento
+                                                        @else
+                                                            Contraproposta
+                                                        @endif
+                                                    </span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                                                        {{ $negociacao->created_at->format('d/m/Y H:i') }}
+                                                    </span>
+                                                </div>
+                                                
+                                                <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                                    <strong>Prestador:</strong> {{ $negociacao->prestador->nome_razao_social }}
+                                                </p>
+                                                
+                                                <div class="mt-2 space-y-1">
+                                                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                                                        <strong>Valor Original:</strong> R$ {{ number_format($negociacao->valor_original, 2, ',', '.') }}
+                                                    </p>
+                                                    
+                                                    @if($negociacao->status === 'aceita' && $negociacao->valor_solicitado)
+                                                        @if($negociacao->tipo === 'desconto')
+                                                            @php
+                                                                $valorDesconto = $negociacao->valor_original - $negociacao->valor_solicitado;
+                                                                $percentualDesconto = ($valorDesconto / $negociacao->valor_original) * 100;
+                                                            @endphp
+                                                            <p class="text-sm text-gray-700 dark:text-gray-300">
+                                                                <strong>Desconto Aplicado:</strong> R$ {{ number_format($valorDesconto, 2, ',', '.') }} ({{ number_format($percentualDesconto, 2, ',', '.') }}%)
+                                                            </p>
+                                                            <p class="text-sm font-semibold text-green-700 dark:text-green-400">
+                                                                <strong>Valor Final:</strong> R$ {{ number_format($negociacao->valor_solicitado, 2, ',', '.') }}
+                                                            </p>
+                                                        @elseif($negociacao->tipo === 'parcelamento')
+                                                            <p class="text-sm text-gray-700 dark:text-gray-300">
+                                                                <strong>Valor por Parcela:</strong> R$ {{ number_format($negociacao->valor_solicitado, 2, ',', '.') }}
+                                                            </p>
+                                                            <p class="text-sm text-gray-700 dark:text-gray-300">
+                                                                <strong>Número de Parcelas:</strong> {{ $negociacao->parcelas }}x
+                                                            </p>
+                                                            <p class="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                                                                <strong>Valor Total:</strong> R$ {{ number_format($negociacao->valor_solicitado * $negociacao->parcelas, 2, ',', '.') }}
+                                                            </p>
+                                                        @else
+                                                            <p class="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                                                                <strong>Valor Proposto (Aceito):</strong> R$ {{ number_format($negociacao->valor_solicitado, 2, ',', '.') }}
+                                                            </p>
+                                                        @endif
+                                                    @endif
+                                                </div>
+                                                
+                                                @if($negociacao->mensagem_solicitacao)
+                                                    <div class="mt-3 p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded">
+                                                        <p class="text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Solicitação:</p>
+                                                        <p class="text-sm text-gray-700 dark:text-gray-300">{{ $negociacao->mensagem_solicitacao }}</p>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if($negociacao->mensagem_resposta)
+                                                    <div class="mt-3 p-3 
+                                                        @if($negociacao->status === 'aceita') bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700
+                                                        @else bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700
+                                                        @endif rounded">
+                                                        <p class="text-xs font-medium 
+                                                            @if($negociacao->status === 'aceita') text-green-800 dark:text-green-200
+                                                            @else text-red-800 dark:text-red-200
+                                                            @endif mb-1">Resposta do Prestador:</p>
+                                                        <p class="text-sm 
+                                                            @if($negociacao->status === 'aceita') text-green-700 dark:text-green-300
+                                                            @else text-red-700 dark:text-red-300
+                                                            @endif">{{ $negociacao->mensagem_resposta }}</p>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if($negociacao->respondido_em)
+                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                                        <strong>Respondido em:</strong> {{ $negociacao->respondido_em->format('d/m/Y H:i') }}
+                                                    </p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
                     @endif
@@ -438,6 +553,63 @@
             }
         }
 
+        // Modal de Negociação
+        function abrirModalNegociacao(orcamentoId, valor, prestadorNome) {
+            const modal = document.getElementById('modal-negociacao');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('orcamento_id_negociacao').value = orcamentoId;
+                document.getElementById('orcamento_valor_negociacao').textContent = 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
+                document.getElementById('orcamento_prestador_negociacao').textContent = prestadorNome;
+                document.getElementById('tipo_negociacao').value = 'desconto';
+                document.getElementById('valor_solicitado').value = '';
+                document.getElementById('parcelas').value = '';
+                document.getElementById('mensagem_solicitacao').value = '';
+                atualizarCamposNegociacao();
+            }
+        }
+
+        function fecharModalNegociacao() {
+            const modal = document.getElementById('modal-negociacao');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.getElementById('valor_solicitado').value = '';
+                document.getElementById('parcelas').value = '';
+                document.getElementById('mensagem_solicitacao').value = '';
+            }
+        }
+
+        function atualizarCamposNegociacao() {
+            const tipo = document.getElementById('tipo_negociacao').value;
+            const contrapropostaContainer = document.getElementById('contraproposta_container');
+            const valorSolicitado = document.getElementById('valor_solicitado');
+            const labelMensagem = document.getElementById('label_mensagem');
+            const infoMensagem = document.getElementById('info_mensagem');
+            const mensagemRequired = document.getElementById('mensagem_required');
+            
+            if (tipo === 'contraproposta') {
+                contrapropostaContainer.classList.remove('hidden');
+                valorSolicitado.required = true;
+                labelMensagem.innerHTML = 'Observações (opcional)';
+                infoMensagem.textContent = '';
+                mensagemRequired.classList.add('hidden');
+            } else {
+                contrapropostaContainer.classList.add('hidden');
+                valorSolicitado.required = false;
+                valorSolicitado.value = '';
+                
+                if (tipo === 'desconto') {
+                    labelMensagem.innerHTML = 'Observações / Solicitação <span class="text-gray-500">(opcional)</span>';
+                    infoMensagem.textContent = 'O prestador escolherá o valor do desconto ao aceitar a negociação.';
+                    mensagemRequired.classList.add('hidden');
+                } else if (tipo === 'parcelamento') {
+                    labelMensagem.innerHTML = 'Observações / Solicitação <span class="text-gray-500">(opcional)</span>';
+                    infoMensagem.textContent = 'O prestador escolherá a quantidade de parcelas ao aceitar a negociação.';
+                    mensagemRequired.classList.add('hidden');
+                }
+            }
+        }
+
         // Fechar modais ao clicar fora
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('modal-overlay')) {
@@ -445,6 +617,7 @@
                 fecharModalAdicionarPrestador();
                 fecharModalAprovarOrcamento();
                 fecharModalRejeitarOrcamento();
+                fecharModalNegociacao();
             }
         });
     </script>
@@ -556,6 +729,62 @@
         </div>
     </div>
 
+    <!-- Modal Negociação -->
+    <div id="modal-negociacao" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
+                <form method="POST" id="form-negociacao">
+                    @csrf
+                    <input type="hidden" id="orcamento_id_negociacao" value="">
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
+                            Solicitar Negociação
+                        </h3>
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                <strong>Prestador:</strong> <span id="orcamento_prestador_negociacao"></span>
+                            </p>
+                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                                <strong>Valor Original:</strong> <span id="orcamento_valor_negociacao"></span>
+                            </p>
+                            <div class="mb-4">
+                                <label for="tipo_negociacao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Tipo de Negociação <span class="text-red-500">*</span>
+                                </label>
+                                <select id="tipo_negociacao" name="tipo" required onchange="atualizarCamposNegociacao()" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    <option value="desconto">Solicitar Desconto</option>
+                                    <option value="parcelamento">Solicitar Parcelamento</option>
+                                    <option value="contraproposta">Enviar Contraproposta</option>
+                                </select>
+                            </div>
+                            <div id="contraproposta_container" class="mb-4 hidden">
+                                <label for="valor_solicitado" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Valor da Contraproposta (R$) <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" id="valor_solicitado" name="valor_solicitado" step="0.01" min="0.01" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            </div>
+                            <div class="mb-4">
+                                <label for="mensagem_solicitacao" id="label_mensagem" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Observações / Solicitação <span id="mensagem_required" class="text-red-500 hidden">*</span>
+                                </label>
+                                <textarea id="mensagem_solicitacao" name="mensagem_solicitacao" rows="4" maxlength="1000" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Descreva sua solicitação..."></textarea>
+                                <p id="info_mensagem" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Enviar Negociação
+                        </button>
+                        <button type="button" onclick="fecharModalNegociacao()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Rejeitar Orçamento -->
     <div id="modal-rejeitar-orcamento" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
@@ -611,6 +840,16 @@
                     const orcamentoId = document.getElementById('orcamento_id_rejeitar').value;
                     if (orcamentoId) {
                         this.action = '/demandas/' + demandaId + '/orcamentos/' + orcamentoId + '/rejeitar';
+                    }
+                });
+            }
+
+            const formNegociacao = document.getElementById('form-negociacao');
+            if (formNegociacao) {
+                formNegociacao.addEventListener('submit', function(e) {
+                    const orcamentoId = document.getElementById('orcamento_id_negociacao').value;
+                    if (orcamentoId) {
+                        this.action = '/demandas/' + demandaId + '/orcamentos/' + orcamentoId + '/negociacao';
                     }
                 });
             }
