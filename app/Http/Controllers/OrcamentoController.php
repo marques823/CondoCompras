@@ -7,6 +7,7 @@ use App\Models\Condominio;
 use App\Models\Prestador;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class OrcamentoController extends Controller
 {
@@ -124,6 +125,7 @@ class OrcamentoController extends Controller
         $orcamento->load([
             'demanda.condominio',
             'demanda.categoriaServico',
+            'demanda.orcamentos', // Carrega todos os orçamentos da demanda para verificar se já existe um aprovado
             'prestador',
             'documentos',
             'negociacoes' => function($query) {
@@ -140,10 +142,26 @@ class OrcamentoController extends Controller
             abort(403);
         }
 
-        $orcamento->aprovar(Auth::id());
+        // Usa transação para garantir consistência
+        DB::transaction(function() use ($orcamento) {
+            // Rejeita automaticamente todos os outros orçamentos da demanda
+            \App\Models\Orcamento::where('demanda_id', $orcamento->demanda_id)
+                ->where('id', '!=', $orcamento->id)
+                ->where('status', '!=', 'rejeitado')
+                ->update([
+                    'status' => 'rejeitado',
+                    'motivo_rejeicao' => 'Outro orçamento foi aprovado para esta demanda.',
+                ]);
+
+            // Aprova o orçamento selecionado
+            $orcamento->aprovar(Auth::id());
+
+            // Atualiza status da demanda
+            $orcamento->demanda->update(['status' => 'em_andamento']);
+        });
 
         return redirect()->route('orcamentos.index')
-            ->with('success', 'Orçamento aprovado com sucesso!');
+            ->with('success', 'Orçamento aprovado com sucesso! Os demais orçamentos foram automaticamente rejeitados.');
     }
 
     public function rejeitar(Request $request, Orcamento $orcamento)

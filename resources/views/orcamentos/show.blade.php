@@ -151,7 +151,10 @@
                     @endif
 
                     <!-- Ações -->
-                    @if($orcamento->status === 'recebido')
+                    @php
+                        $temOrcamentoAprovado = $orcamento->demanda->orcamentos->where('status', 'aprovado')->isNotEmpty();
+                    @endphp
+                    @if($orcamento->status === 'recebido' && !$temOrcamentoAprovado)
                     <div class="mb-6 flex gap-2">
                         <button type="button" onclick="abrirModalAprovarOrcamento()" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md">
                             Aprovar Orçamento
@@ -162,6 +165,23 @@
                         <button type="button" onclick="abrirModalNegociacao()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
                             Negociar
                         </button>
+                    </div>
+                    @elseif($orcamento->status === 'recebido' && $temOrcamentoAprovado)
+                    <div class="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                        <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                            <strong>Atenção:</strong> Outro orçamento já foi aprovado para esta demanda. Ao aprovar este orçamento, o outro será automaticamente rejeitado.
+                        </p>
+                        <div class="mt-3 flex gap-2">
+                            <button type="button" onclick="abrirModalAprovarOrcamento()" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md">
+                                Aprovar Este Orçamento (Substituir)
+                            </button>
+                            <button type="button" onclick="abrirModalRejeitarOrcamento()" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md">
+                                Rejeitar Orçamento
+                            </button>
+                            <button type="button" onclick="abrirModalNegociacao()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
+                                Negociar
+                            </button>
+                        </div>
                     </div>
                     @endif
 

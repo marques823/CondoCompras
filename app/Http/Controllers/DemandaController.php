@@ -8,6 +8,7 @@ use App\Models\Prestador;
 use App\Models\DemandaAnexo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -383,18 +384,31 @@ class DemandaController extends Controller
             'observacoes' => 'nullable|string',
         ]);
 
-        $orcamento->update([
-            'status' => 'aprovado',
-            'aprovado_por' => Auth::id(),
-            'aprovado_em' => now(),
-            'observacoes' => $validated['observacoes'] ?? $orcamento->observacoes,
-        ]);
+        // Usa transação para garantir consistência
+        DB::transaction(function() use ($orcamento, $demanda, $validated) {
+            // Rejeita automaticamente todos os outros orçamentos da demanda
+            \App\Models\Orcamento::where('demanda_id', $demanda->id)
+                ->where('id', '!=', $orcamento->id)
+                ->where('status', '!=', 'rejeitado')
+                ->update([
+                    'status' => 'rejeitado',
+                    'motivo_rejeicao' => 'Outro orçamento foi aprovado para esta demanda.',
+                ]);
 
-        // Atualiza status da demanda
-        $demanda->update(['status' => 'em_andamento']);
+            // Aprova o orçamento selecionado
+            $orcamento->update([
+                'status' => 'aprovado',
+                'aprovado_por' => Auth::id(),
+                'aprovado_em' => now(),
+                'observacoes' => $validated['observacoes'] ?? $orcamento->observacoes,
+            ]);
+
+            // Atualiza status da demanda
+            $demanda->update(['status' => 'em_andamento']);
+        });
 
         return redirect()->back()
-            ->with('success', 'Orçamento aprovado com sucesso!');
+            ->with('success', 'Orçamento aprovado com sucesso! Os demais orçamentos foram automaticamente rejeitados.');
     }
 
     public function rejeitarOrcamento(Request $request, Demanda $demanda, $orcamento)
