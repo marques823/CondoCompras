@@ -66,10 +66,26 @@
                             <p>{{ $demanda->created_at->format('d/m/Y H:i') }}</p>
                         </div>
 
-                        @if($demanda->prazo_limite)
+                        @if($demanda->urgencia)
                         <div>
-                            <h3 class="text-lg font-semibold mb-2">Prazo Limite</h3>
-                            <p>{{ $demanda->prazo_limite->format('d/m/Y') }}</p>
+                            <h3 class="text-lg font-semibold mb-2">Urgência</h3>
+                            @php
+                                $urgenciaColors = [
+                                    'baixa' => 'bg-green-100 text-green-800',
+                                    'media' => 'bg-yellow-100 text-yellow-800',
+                                    'alta' => 'bg-orange-100 text-orange-800',
+                                    'critica' => 'bg-red-100 text-red-800',
+                                ];
+                                $urgenciaLabels = [
+                                    'baixa' => 'Baixa',
+                                    'media' => 'Média',
+                                    'alta' => 'Alta',
+                                    'critica' => 'Crítica',
+                                ];
+                            @endphp
+                            <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full {{ $urgenciaColors[$demanda->urgencia] ?? 'bg-gray-100 text-gray-800' }}">
+                                {{ $urgenciaLabels[$demanda->urgencia] ?? ucfirst($demanda->urgencia) }}
+                            </span>
                         </div>
                         @endif
                     </div>
@@ -79,8 +95,146 @@
                         <p class="whitespace-pre-wrap">{{ $demanda->descricao }}</p>
                     </div>
 
+                    @if($demanda->anexos->count() > 0)
+                    <div class="mb-8 border-t border-gray-200 dark:border-gray-700 pt-6">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Arquivos e Fotos Anexadas</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Arquivo</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Tipo</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    @php $imgIdx = 0; @endphp
+                                    @foreach($demanda->anexos as $anexo)
+                                        <tr>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                                {{ $anexo->nome_original }}
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                                {{ str_contains($anexo->mime_type, 'image') ? 'Imagem' : 'Documento' }}
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium space-x-3">
+                                                @if(str_starts_with($anexo->mime_type ?? '', 'image/'))
+                                                    <button type="button" onclick="abrirImagem({{ $imgIdx++ }})" class="text-indigo-600 hover:text-indigo-900 font-bold underline">Visualizar</button>
+                                                @else
+                                                    <a href="{{ Storage::url($anexo->caminho) }}" target="_blank" class="text-indigo-600 hover:text-indigo-900 font-bold underline">Abrir</a>
+                                                @endif
+                                                <a href="{{ Storage::url($anexo->caminho) }}" download="{{ $anexo->nome_original }}" class="text-green-600 hover:text-green-900 font-bold underline">Download</a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Modal Lightbox com Zoom -->
+                    <div id="modal-imagem" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-90 overflow-auto py-10" onclick="fecharImagem()">
+                        <!-- Botão Fechar Fixo -->
+                        <button type="button" class="fixed top-6 right-6 text-white hover:text-gray-300 focus:outline-none z-[110] bg-black bg-opacity-50 p-2 rounded-full" onclick="fecharImagem()">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+
+                        <!-- Navegação -->
+                        <button type="button" class="fixed left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 z-[110] bg-black bg-opacity-20 p-2 rounded-full" onclick="event.stopPropagation(); imagemAnterior()">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        </button>
+                        <button type="button" class="fixed right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 z-[110] bg-black bg-opacity-20 p-2 rounded-full" onclick="event.stopPropagation(); proximaImagem()">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+
+                        <!-- Container Imagem -->
+                        <div class="relative flex flex-col items-center justify-center" onclick="event.stopPropagation()">
+                            <img id="imagem-modal" src="" alt="" 
+                                 class="max-w-[85vw] max-h-[65vh] object-contain rounded shadow-2xl transition-transform duration-300 cursor-zoom-in"
+                                 ondblclick="toggleZoom(this)">
+                            <div class="mt-4 flex flex-col items-center">
+                                <p id="nome-imagem-modal" class="text-white text-sm font-medium bg-black bg-opacity-60 px-4 py-1.5 rounded-full"></p>
+                                <p class="text-gray-400 text-[10px] mt-2 italic">Dica: 2 cliques para zoom</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    @php
+                        $listaImagens = $demanda->anexos->filter(fn($a) => str_starts_with($a->mime_type ?? '', 'image/'))
+                            ->map(fn($a) => ['url' => Storage::url($a->caminho), 'nome' => $a->nome_original])
+                            ->values();
+                    @endphp
+
+                    <script>
+                        const imagens = @json($listaImagens);
+                        let imagemAtual = 0;
+                        let isZoomed = false;
+
+                        function toggleZoom(img) {
+                            isZoomed = !isZoomed;
+                            if (isZoomed) {
+                                img.style.transform = 'scale(1.5)';
+                                img.classList.remove('cursor-zoom-in');
+                                img.classList.add('cursor-zoom-out');
+                                document.getElementById('modal-imagem').classList.remove('items-center');
+                                document.getElementById('modal-imagem').classList.add('items-start');
+                            } else {
+                                img.style.transform = 'scale(1)';
+                                img.classList.remove('cursor-zoom-out');
+                                img.classList.add('cursor-zoom-in');
+                                document.getElementById('modal-imagem').classList.add('items-center');
+                                document.getElementById('modal-imagem').classList.remove('items-start');
+                            }
+                        }
+
+                        function abrirImagem(index) {
+                            imagemAtual = index;
+                            const img = document.getElementById('imagem-modal');
+                            img.style.transform = 'scale(1)';
+                            isZoomed = false;
+                            img.classList.add('cursor-zoom-in');
+                            img.classList.remove('cursor-zoom-out');
+                            
+                            img.src = imagens[imagemAtual].url;
+                            document.getElementById('nome-imagem-modal').textContent = imagens[imagemAtual].nome;
+                            document.getElementById('modal-imagem').classList.remove('hidden');
+                            document.body.style.overflow = 'hidden';
+                        }
+
+                        function fecharImagem() {
+                            document.getElementById('modal-imagem').classList.add('hidden');
+                            document.body.style.overflow = 'auto';
+                        }
+
+                        function imagemAnterior() {
+                            imagemAtual = (imagemAtual > 0) ? imagemAtual - 1 : imagens.length - 1;
+                            const img = document.getElementById('imagem-modal');
+                            img.style.transform = 'scale(1)';
+                            isZoomed = false;
+                            img.src = imagens[imagemAtual].url;
+                            document.getElementById('nome-imagem-modal').textContent = imagens[imagemAtual].nome;
+                        }
+
+                        function proximaImagem() {
+                            imagemAtual = (imagemAtual < imagens.length - 1) ? imagemAtual + 1 : 0;
+                            const img = document.getElementById('imagem-modal');
+                            img.style.transform = 'scale(1)';
+                            isZoomed = false;
+                            img.src = imagens[imagemAtual].url;
+                            document.getElementById('nome-imagem-modal').textContent = imagens[imagemAtual].nome;
+                        }
+
+                        document.addEventListener('keydown', (e) => {
+                            if (document.getElementById('modal-imagem').classList.contains('hidden')) return;
+                            if (e.key === 'Escape') fecharImagem();
+                            if (e.key === 'ArrowLeft') imagemAnterior();
+                            if (e.key === 'ArrowRight') proximaImagem();
+                        });
+                    </script>
+                    @endif
+
                     <div class="mb-6">
-                        <div class="flex justify-between items-center mb-4">
+                        <div class="flex justify-between items-center mb-4 border-t border-gray-200 dark:border-gray-700 pt-6">
                             <h3 class="text-lg font-semibold">Prestadores Convidados</h3>
                             <button type="button" onclick="abrirModalAdicionarPrestador()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition-colors text-sm">
                                 + Adicionar Prestador
@@ -116,20 +270,10 @@
                                                         $linkUrl = route('prestador.link.show', $link->token);
                                                     @endphp
                                                     <div class="flex items-center gap-2" data-link-url="{{ $linkUrl }}" data-prestador-nome="{{ $prestador->nome_razao_social }}" data-link-id="{{ $link->id }}">
-                                                        <button type="button" 
-                                                                class="copiar-link-btn inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                                                                title="Copiar link">
-                                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                                            </svg>
-                                                            <span class="copiar-texto">Copiar</span>
+                                                        <button type="button" class="copiar-link-btn inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 transition-colors">
+                                                            <span class="copiar-texto text-blue-600 font-bold">Copiar Link</span>
                                                         </button>
-                                                        <button type="button" 
-                                                                class="compartilhar-link-btn inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-                                                                title="Compartilhar link">
-                                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
-                                                            </svg>
+                                                        <button type="button" class="compartilhar-link-btn inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded transition-colors">
                                                             Compartilhar
                                                         </button>
                                                     </div>
@@ -137,23 +281,20 @@
                                                     <span class="text-gray-400">-</span>
                                                 @endif
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                <form method="POST" action="{{ route('demandas.remover-prestador', [$demanda, $prestador]) }}" onsubmit="return confirm('Tem certeza que deseja remover este prestador?');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900">Remover</button>
-                                                </form>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium cursor-pointer" onclick="return confirm('Tem certeza?') && this.nextElementSibling.submit()">
+                                                Remover
+                                                <form method="POST" action="{{ route('demandas.remover-prestador', [$demanda, $prestador]) }}" class="hidden">@csrf @method('DELETE')</form>
                                             </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
-                    </div>
                     @endif
+                    </div>
 
                     @if($demanda->orcamentos->count() > 0)
-                    <div>
+                    <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
                         <h3 class="text-lg font-semibold mb-4">Orçamentos Recebidos</h3>
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -162,44 +303,25 @@
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Prestador</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Valor</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Data</th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     @foreach($demanda->orcamentos as $orcamento)
                                         <tr>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                                {{ $orcamento->prestador->nome_razao_social }}
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                                R$ {{ number_format($orcamento->valor, 2, ',', '.') }}
-                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ $orcamento->prestador->nome_razao_social }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 font-bold">R$ {{ number_format($orcamento->valor, 2, ',', '.') }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                @php
-                                                    $statusColors = [
-                                                        'recebido' => 'bg-blue-100 text-blue-800',
-                                                        'aprovado' => 'bg-green-100 text-green-800',
-                                                        'rejeitado' => 'bg-red-100 text-red-800',
-                                                    ];
-                                                @endphp
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $statusColors[$orcamento->status] ?? 'bg-gray-100 text-gray-800' }}">
+                                                <span class="px-2 inline-flex text-xs font-semibold rounded-full {{ $orcamento->status === 'aprovado' ? 'bg-green-100 text-green-800' : ($orcamento->status === 'rejeitado' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800') }}">
                                                     {{ ucfirst($orcamento->status) }}
                                                 </span>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                {{ $orcamento->created_at->format('d/m/Y') }}
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                                                 @if($orcamento->status === 'recebido')
-                                                    <div class="flex gap-2 flex-wrap">
-                                                        <button type="button" onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ $orcamento->prestador->nome_razao_social }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
-                                                        <button type="button" onclick="abrirModalRejeitarOrcamento({{ $orcamento->id }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-red-600 hover:text-red-900">Rejeitar</button>
-                                                        <button type="button" onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
-                                                    </div>
-                                                @else
-                                                    <span class="text-gray-400">-</span>
+                                                    <button onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ $orcamento->prestador->nome_razao_social }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
+                                                    <button onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
                                                 @endif
+                                                <a href="{{ route('orcamentos.show', $orcamento) }}" class="text-indigo-600 hover:text-indigo-900">Detalhes</a>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -208,450 +330,28 @@
                         </div>
                     </div>
                     @endif
-
-                    @php
-                        $negociacoesRespondidas = \App\Models\Negociacao::whereIn('orcamento_id', $demanda->orcamentos->pluck('id'))
-                            ->whereIn('status', ['aceita', 'recusada'])
-                            ->with(['orcamento', 'prestador'])
-                            ->orderBy('respondido_em', 'desc')
-                            ->get();
-                    @endphp
-
-                    @if($negociacoesRespondidas->count() > 0)
-                    <div class="mt-6">
-                        <h3 class="text-lg font-semibold mb-4">Negociações Respondidas</h3>
-                        <div class="overflow-x-auto">
-                            <div class="space-y-4">
-                                @foreach($negociacoesRespondidas as $negociacao)
-                                    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                                        <div class="flex justify-between items-start mb-3">
-                                            <div class="flex-1">
-                                                <div class="flex items-center gap-3 mb-2">
-                                                    <span class="px-3 py-1 text-xs font-semibold rounded-full
-                                                        @if($negociacao->status === 'aceita') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                                        @else bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
-                                                        @endif">
-                                                        {{ ucfirst($negociacao->status) }}
-                                                    </span>
-                                                    <span class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                                        @if($negociacao->tipo === 'desconto')
-                                                            Desconto
-                                                        @elseif($negociacao->tipo === 'parcelamento')
-                                                            Parcelamento
-                                                        @else
-                                                            Contraproposta
-                                                        @endif
-                                                    </span>
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400">
-                                                        {{ $negociacao->created_at->format('d/m/Y H:i') }}
-                                                    </span>
-                                                </div>
-                                                
-                                                <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                                                    <strong>Prestador:</strong> {{ $negociacao->prestador->nome_razao_social }}
-                                                </p>
-                                                
-                                                <div class="mt-2 space-y-1">
-                                                    <p class="text-sm text-gray-700 dark:text-gray-300">
-                                                        <strong>Valor Original:</strong> R$ {{ number_format($negociacao->valor_original, 2, ',', '.') }}
-                                                    </p>
-                                                    
-                                                    @if($negociacao->status === 'aceita' && $negociacao->valor_solicitado)
-                                                        @if($negociacao->tipo === 'desconto')
-                                                            @php
-                                                                $valorDesconto = $negociacao->valor_original - $negociacao->valor_solicitado;
-                                                                $percentualDesconto = ($valorDesconto / $negociacao->valor_original) * 100;
-                                                            @endphp
-                                                            <p class="text-sm text-gray-700 dark:text-gray-300">
-                                                                <strong>Desconto Aplicado:</strong> R$ {{ number_format($valorDesconto, 2, ',', '.') }} ({{ number_format($percentualDesconto, 2, ',', '.') }}%)
-                                                            </p>
-                                                            <p class="text-sm font-semibold text-green-700 dark:text-green-400">
-                                                                <strong>Valor Final:</strong> R$ {{ number_format($negociacao->valor_solicitado, 2, ',', '.') }}
-                                                            </p>
-                                                        @elseif($negociacao->tipo === 'parcelamento')
-                                                            <p class="text-sm text-gray-700 dark:text-gray-300">
-                                                                <strong>Valor por Parcela:</strong> R$ {{ number_format($negociacao->valor_solicitado, 2, ',', '.') }}
-                                                            </p>
-                                                            <p class="text-sm text-gray-700 dark:text-gray-300">
-                                                                <strong>Número de Parcelas:</strong> {{ $negociacao->parcelas }}x
-                                                            </p>
-                                                            <p class="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                                                                <strong>Valor Total:</strong> R$ {{ number_format($negociacao->valor_solicitado * $negociacao->parcelas, 2, ',', '.') }}
-                                                            </p>
-                                                        @else
-                                                            <p class="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                                                                <strong>Valor Proposto (Aceito):</strong> R$ {{ number_format($negociacao->valor_solicitado, 2, ',', '.') }}
-                                                            </p>
-                                                        @endif
-                                                    @endif
-                                                </div>
-                                                
-                                                @if($negociacao->mensagem_solicitacao)
-                                                    <div class="mt-3 p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded">
-                                                        <p class="text-xs font-medium text-gray-800 dark:text-gray-200 mb-1">Solicitação:</p>
-                                                        <p class="text-sm text-gray-700 dark:text-gray-300">{{ $negociacao->mensagem_solicitacao }}</p>
-                                                    </div>
-                                                @endif
-                                                
-                                                @if($negociacao->mensagem_resposta)
-                                                    <div class="mt-3 p-3 
-                                                        @if($negociacao->status === 'aceita') bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700
-                                                        @else bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700
-                                                        @endif rounded">
-                                                        <p class="text-xs font-medium 
-                                                            @if($negociacao->status === 'aceita') text-green-800 dark:text-green-200
-                                                            @else text-red-800 dark:text-red-200
-                                                            @endif mb-1">Resposta do Prestador:</p>
-                                                        <p class="text-sm 
-                                                            @if($negociacao->status === 'aceita') text-green-700 dark:text-green-300
-                                                            @else text-red-700 dark:text-red-300
-                                                            @endif">{{ $negociacao->mensagem_resposta }}</p>
-                                                    </div>
-                                                @endif
-                                                
-                                                @if($negociacao->respondido_em)
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                                                        <strong>Respondido em:</strong> {{ $negociacao->respondido_em->format('d/m/Y H:i') }}
-                                                    </p>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                    @endif
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        // Configura event listeners para os botões
-        document.addEventListener('DOMContentLoaded', function() {
-            // Botões de copiar
-            document.querySelectorAll('.copiar-link-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    const container = this.closest('[data-link-url]');
-                    const url = container.getAttribute('data-link-url');
-                    const linkId = container.getAttribute('data-link-id');
-                    copiarLink(url, linkId, this);
-                });
-            });
-
-            // Botões de compartilhar
-            document.querySelectorAll('.compartilhar-link-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    const container = this.closest('[data-link-url]');
-                    const url = container.getAttribute('data-link-url');
-                    const prestadorNome = container.getAttribute('data-prestador-nome');
-                    compartilharLink(url, prestadorNome);
-                });
-            });
-        });
-
-        function copiarLink(url, linkId, button) {
-            // Usa a Clipboard API moderna
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(url).then(function() {
-                    mostrarFeedbackBotao(button, 'Copiado!');
-                    mostrarFeedback('Link copiado!', 'success', linkId);
-                }).catch(function(err) {
-                    console.error('Erro ao copiar:', err);
-                    copiarFallback(url, linkId, button);
-                });
-            } else {
-                // Fallback para navegadores antigos
-                copiarFallback(url, linkId, button);
-            }
-        }
-
-        function copiarFallback(url, linkId, button) {
-            // Cria um elemento temporário
-            const textArea = document.createElement('textarea');
-            textArea.value = url;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            textArea.style.top = '-999999px';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    mostrarFeedbackBotao(button, 'Copiado!');
-                    mostrarFeedback('Link copiado!', 'success', linkId);
-                } else {
-                    mostrarFeedback('Não foi possível copiar. Link: ' + url, 'error', linkId);
-                }
-            } catch (err) {
-                console.error('Erro ao copiar:', err);
-                mostrarFeedback('Erro ao copiar. Tente selecionar manualmente.', 'error', linkId);
-            }
-            
-            document.body.removeChild(textArea);
-        }
-
-        function mostrarFeedbackBotao(button, texto) {
-            if (!button) return;
-            
-            const textoElemento = button.querySelector('.copiar-texto');
-            const svgElemento = button.querySelector('svg');
-            if (!textoElemento) return;
-            
-            // Salva o texto original se ainda não foi salvo
-            if (!button.dataset.originalText) {
-                button.dataset.originalText = textoElemento.textContent.trim();
-            }
-            
-            // Altera o texto do botão
-            textoElemento.textContent = texto;
-            
-            // Altera APENAS a cor do texto e ícone para verde
-            textoElemento.classList.add('text-green-600', 'dark:text-green-400', 'font-bold');
-            if (svgElemento) {
-                svgElemento.classList.add('text-green-600', 'dark:text-green-400');
-            }
-            button.disabled = true;
-            
-            // Restaura após 2 segundos
-            setTimeout(function() {
-                const originalText = button.dataset.originalText || 'Copiar';
-                textoElemento.textContent = originalText;
-                textoElemento.classList.remove('text-green-600', 'dark:text-green-400', 'font-bold');
-                if (svgElemento) {
-                    svgElemento.classList.remove('text-green-600', 'dark:text-green-400');
-                }
-                button.disabled = false;
-            }, 2000);
-        }
-
-        function compartilharLink(url, prestadorNome) {
-            const title = 'Demanda: {{ $demanda->titulo }}';
-            const text = 'Olá! Você foi convidado para enviar um orçamento para a demanda: {{ $demanda->titulo }}. Acesse o link para ver os detalhes:';
-
-            // Tenta usar a Web Share API (Mobile)
-            if (navigator.share) {
-                navigator.share({
-                    title: title,
-                    text: text + ' ' + url,
-                    url: url,
-                }).then(function() {
-                    mostrarFeedback('Link compartilhado!', 'success', null);
-                }).catch(function(err) {
-                    // Usuário cancelou ou erro ocorreu
-                    if (err.name !== 'AbortError') {
-                        console.error('Erro ao compartilhar:', err);
-                        compartilharWhatsApp(url, text);
-                    }
-                });
-            } else {
-                // Fallback para WhatsApp (Desktop/Outros)
-                compartilharWhatsApp(url, text);
-            }
-        }
-
-        function compartilharWhatsApp(url, text) {
-            const encodedText = encodeURIComponent(text + ' ' + url);
-            window.open('https://wa.me/?text=' + encodedText, '_blank');
-        }
-
-        function mostrarFeedback(mensagem, tipo, linkId) {
-            // Remove feedbacks anteriores
-            const feedbacksAnteriores = document.querySelectorAll('.link-feedback');
-            feedbacksAnteriores.forEach(el => el.remove());
-
-            // Cria elemento de feedback
-            const feedback = document.createElement('div');
-            feedback.className = 'link-feedback fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 ' + 
-                (tipo === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white');
-            feedback.textContent = mensagem;
-
-            document.body.appendChild(feedback);
-
-            // Remove após 3 segundos
-            setTimeout(function() {
-                feedback.style.opacity = '0';
-                feedback.style.transform = 'translateY(-10px)';
-                setTimeout(function() {
-                    if (feedback.parentNode) {
-                        feedback.parentNode.removeChild(feedback);
-                    }
-                }, 300);
-            }, 3000);
-        }
-
-        // Modal de Alteração de Status
-        function abrirModalStatus() {
-            const modal = document.getElementById('modal-status');
-            if (modal) {
-                modal.classList.remove('hidden');
-                document.getElementById('status_select').value = '{{ $demanda->status }}';
-            }
-        }
-
-        function fecharModalStatus() {
-            const modal = document.getElementById('modal-status');
-            if (modal) {
-                modal.classList.add('hidden');
-            }
-        }
-
-        // Modal de Adicionar Prestador
-        function abrirModalAdicionarPrestador() {
-            const modal = document.getElementById('modal-adicionar-prestador');
-            if (modal) {
-                modal.classList.remove('hidden');
-            }
-        }
-
-        function fecharModalAdicionarPrestador() {
-            const modal = document.getElementById('modal-adicionar-prestador');
-            if (modal) {
-                modal.classList.add('hidden');
-                // Limpa seleções
-                document.querySelectorAll('#modal-adicionar-prestador input[type="checkbox"]').forEach(cb => cb.checked = false);
-            }
-        }
-
-        // Modal de Aprovar Orçamento
-        function abrirModalAprovarOrcamento(orcamentoId, valor, prestadorNome) {
-            const modal = document.getElementById('modal-aprovar-orcamento');
-            if (modal) {
-                modal.classList.remove('hidden');
-                document.getElementById('orcamento_id_aprovar').value = orcamentoId;
-                document.getElementById('orcamento_valor_aprovar').textContent = 'R$ ' + valor;
-                document.getElementById('orcamento_prestador_aprovar').textContent = prestadorNome;
-            }
-        }
-
-        function fecharModalAprovarOrcamento() {
-            const modal = document.getElementById('modal-aprovar-orcamento');
-            if (modal) {
-                modal.classList.add('hidden');
-                document.getElementById('observacoes_aprovar').value = '';
-            }
-        }
-
-        // Modal de Rejeitar Orçamento
-        function abrirModalRejeitarOrcamento(orcamentoId, prestadorNome) {
-            const modal = document.getElementById('modal-rejeitar-orcamento');
-            if (modal) {
-                modal.classList.remove('hidden');
-                document.getElementById('orcamento_id_rejeitar').value = orcamentoId;
-                document.getElementById('orcamento_prestador_rejeitar').textContent = prestadorNome;
-            }
-        }
-
-        function fecharModalRejeitarOrcamento() {
-            const modal = document.getElementById('modal-rejeitar-orcamento');
-            if (modal) {
-                modal.classList.add('hidden');
-                document.getElementById('motivo_rejeicao').value = '';
-            }
-        }
-
-        // Modal de Negociação
-        function abrirModalNegociacao(orcamentoId, valor, prestadorNome) {
-            const modal = document.getElementById('modal-negociacao');
-            if (modal) {
-                modal.classList.remove('hidden');
-                document.getElementById('orcamento_id_negociacao').value = orcamentoId;
-                document.getElementById('orcamento_valor_negociacao').textContent = 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
-                document.getElementById('orcamento_prestador_negociacao').textContent = prestadorNome;
-                document.getElementById('tipo_negociacao').value = 'desconto';
-                document.getElementById('valor_solicitado').value = '';
-                document.getElementById('parcelas').value = '';
-                document.getElementById('mensagem_solicitacao').value = '';
-                atualizarCamposNegociacao();
-            }
-        }
-
-        function fecharModalNegociacao() {
-            const modal = document.getElementById('modal-negociacao');
-            if (modal) {
-                modal.classList.add('hidden');
-                document.getElementById('valor_solicitado').value = '';
-                document.getElementById('parcelas').value = '';
-                document.getElementById('mensagem_solicitacao').value = '';
-            }
-        }
-
-        function atualizarCamposNegociacao() {
-            const tipo = document.getElementById('tipo_negociacao').value;
-            const contrapropostaContainer = document.getElementById('contraproposta_container');
-            const valorSolicitado = document.getElementById('valor_solicitado');
-            const labelMensagem = document.getElementById('label_mensagem');
-            const infoMensagem = document.getElementById('info_mensagem');
-            const mensagemRequired = document.getElementById('mensagem_required');
-            
-            if (tipo === 'contraproposta') {
-                contrapropostaContainer.classList.remove('hidden');
-                valorSolicitado.required = true;
-                labelMensagem.innerHTML = 'Observações (opcional)';
-                infoMensagem.textContent = '';
-                mensagemRequired.classList.add('hidden');
-            } else {
-                contrapropostaContainer.classList.add('hidden');
-                valorSolicitado.required = false;
-                valorSolicitado.value = '';
-                
-                if (tipo === 'desconto') {
-                    labelMensagem.innerHTML = 'Observações / Solicitação <span class="text-gray-500">(opcional)</span>';
-                    infoMensagem.textContent = 'O prestador escolherá o valor do desconto ao aceitar a negociação.';
-                    mensagemRequired.classList.add('hidden');
-                } else if (tipo === 'parcelamento') {
-                    labelMensagem.innerHTML = 'Observações / Solicitação <span class="text-gray-500">(opcional)</span>';
-                    infoMensagem.textContent = 'O prestador escolherá a quantidade de parcelas ao aceitar a negociação.';
-                    mensagemRequired.classList.add('hidden');
-                }
-            }
-        }
-
-        // Fechar modais ao clicar fora
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal-overlay')) {
-                fecharModalStatus();
-                fecharModalAdicionarPrestador();
-                fecharModalAprovarOrcamento();
-                fecharModalRejeitarOrcamento();
-                fecharModalNegociacao();
-            }
-        });
-    </script>
-
-    <!-- Modal Alterar Status -->
+    <!-- Modais de Status/Aprovação/Negociação -->
     <div id="modal-status" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:max-w-lg w-full p-6">
+                <h3 class="text-lg font-medium mb-4">Alterar Status</h3>
                 <form method="POST" action="{{ route('demandas.update-status', $demanda) }}">
                     @csrf
-                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
-                            Alterar Status da Demanda
-                        </h3>
-                        <div class="mb-4">
-                            <label for="status_select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Novo Status
-                            </label>
-                            <select id="status_select" name="status" required class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                <option value="aberta">Aberta</option>
-                                <option value="em_andamento">Em Andamento</option>
-                                <option value="aguardando_orcamento">Aguardando Orçamento</option>
-                                <option value="concluida">Concluída</option>
-                                <option value="cancelada">Cancelada</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Salvar
-                        </button>
-                        <button type="button" onclick="fecharModalStatus()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancelar
-                        </button>
+                    <select name="status" required class="block w-full rounded-md border-gray-300 dark:bg-gray-900 mb-6">
+                        <option value="aberta">Aberta</option>
+                        <option value="em_andamento">Em Andamento</option>
+                        <option value="aguardando_orcamento">Aguardando Orçamento</option>
+                        <option value="concluida">Concluída</option>
+                        <option value="cancelada">Cancelada</option>
+                    </select>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="fecharModalStatus()" class="px-4 py-2 border rounded-md">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md">Salvar</button>
                     </div>
                 </form>
             </div>
@@ -659,33 +359,25 @@
     </div>
 
     <!-- Modal Adicionar Prestador -->
-    <div id="modal-adicionar-prestador" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
+    <div id="modal-adicionar-prestador" class="hidden fixed inset-0 z-50 modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:max-w-md w-full p-6">
+                <h3 class="text-lg font-medium mb-4">Adicionar Prestadores</h3>
                 <form method="POST" action="{{ route('demandas.adicionar-prestadores', $demanda) }}">
                     @csrf
-                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
-                            Adicionar Prestadores
-                        </h3>
-                        <div class="max-h-96 overflow-y-auto space-y-2">
-                            @forelse($prestadoresDisponiveis ?? [] as $prestador)
-                                <label class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
-                                    <input type="checkbox" name="prestadores[]" value="{{ $prestador->id }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                                    <span class="ml-2 text-sm text-gray-900 dark:text-gray-100">{{ $prestador->nome_razao_social }}</span>
-                                </label>
-                            @empty
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Todos os prestadores já estão associados a esta demanda.</p>
-                            @endforelse
-                        </div>
+                    <div class="max-h-60 overflow-y-auto mb-6">
+                        @forelse($prestadoresDisponiveis ?? [] as $p)
+                            <label class="flex items-center p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                                <input type="checkbox" name="prestadores[]" value="{{ $p->id }}" class="rounded text-indigo-600">
+                                <span class="ml-2 text-sm">{{ $p->nome_razao_social }}</span>
+                            </label>
+                        @empty
+                            <p class="text-sm text-gray-500">Nenhum prestador disponível.</p>
+                        @endforelse
                     </div>
-                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Adicionar
-                        </button>
-                        <button type="button" onclick="fecharModalAdicionarPrestador()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancelar
-                        </button>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="fecharModalAdicionarPrestador()" class="px-4 py-2 border rounded-md">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md">Adicionar</button>
                     </div>
                 </form>
             </div>
@@ -693,126 +385,19 @@
     </div>
 
     <!-- Modal Aprovar Orçamento -->
-    <div id="modal-aprovar-orcamento" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
-                <form method="POST" id="form-aprovar-orcamento">
+    <div id="modal-aprovar-orcamento" class="hidden fixed inset-0 z-50 modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:max-w-md w-full p-6">
+                <h3 class="text-lg font-medium mb-4 text-green-600">Aprovar Orçamento</h3>
+                <form id="form-aprovar-orcamento" method="POST">
                     @csrf
-                    <input type="hidden" id="orcamento_id_aprovar" value="">
-                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
-                            Aprovar Orçamento
-                        </h3>
-                        <div class="mb-4">
-                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                                <strong>Prestador:</strong> <span id="orcamento_prestador_aprovar"></span>
-                            </p>
-                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                                <strong>Valor:</strong> <span id="orcamento_valor_aprovar"></span>
-                            </p>
-                            <label for="observacoes_aprovar" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Observações (opcional)
-                            </label>
-                            <textarea id="observacoes_aprovar" name="observacoes" rows="3" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Aprovar
-                        </button>
-                        <button type="button" onclick="fecharModalAprovarOrcamento()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancelar
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Negociação -->
-    <div id="modal-negociacao" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
-                <form method="POST" id="form-negociacao">
-                    @csrf
-                    <input type="hidden" id="orcamento_id_negociacao" value="">
-                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
-                            Solicitar Negociação
-                        </h3>
-                        <div class="mb-4">
-                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                                <strong>Prestador:</strong> <span id="orcamento_prestador_negociacao"></span>
-                            </p>
-                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                                <strong>Valor Original:</strong> <span id="orcamento_valor_negociacao"></span>
-                            </p>
-                            <div class="mb-4">
-                                <label for="tipo_negociacao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Tipo de Negociação <span class="text-red-500">*</span>
-                                </label>
-                                <select id="tipo_negociacao" name="tipo" required onchange="atualizarCamposNegociacao()" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                    <option value="desconto">Solicitar Desconto</option>
-                                    <option value="parcelamento">Solicitar Parcelamento</option>
-                                    <option value="contraproposta">Enviar Contraproposta</option>
-                                </select>
-                            </div>
-                            <div id="contraproposta_container" class="mb-4 hidden">
-                                <label for="valor_solicitado" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Valor da Contraproposta (R$) <span class="text-red-500">*</span>
-                                </label>
-                                <input type="number" id="valor_solicitado" name="valor_solicitado" step="0.01" min="0.01" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                            </div>
-                            <div class="mb-4">
-                                <label for="mensagem_solicitacao" id="label_mensagem" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Observações / Solicitação <span id="mensagem_required" class="text-red-500 hidden">*</span>
-                                </label>
-                                <textarea id="mensagem_solicitacao" name="mensagem_solicitacao" rows="4" maxlength="1000" class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Descreva sua solicitação..."></textarea>
-                                <p id="info_mensagem" class="mt-1 text-xs text-gray-500 dark:text-gray-400"></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Enviar Negociação
-                        </button>
-                        <button type="button" onclick="fecharModalNegociacao()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancelar
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Rejeitar Orçamento -->
-    <div id="modal-rejeitar-orcamento" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
-                <form method="POST" id="form-rejeitar-orcamento">
-                    @csrf
-                    <input type="hidden" id="orcamento_id_rejeitar" value="">
-                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
-                            Rejeitar Orçamento
-                        </h3>
-                        <div class="mb-4">
-                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                                <strong>Prestador:</strong> <span id="orcamento_prestador_rejeitar"></span>
-                            </p>
-                            <label for="motivo_rejeicao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Motivo da Rejeição <span class="text-red-500">*</span>
-                            </label>
-                            <textarea id="motivo_rejeicao" name="motivo_rejeicao" rows="4" required class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            Rejeitar
-                        </button>
-                        <button type="button" onclick="fecharModalRejeitarOrcamento()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancelar
-                        </button>
+                    <input type="hidden" id="orcamento_id_aprovar">
+                    <p class="text-sm mb-2"><strong>Prestador:</strong> <span id="orcamento_prestador_aprovar"></span></p>
+                    <p class="text-sm mb-4 font-bold">Valor: <span id="orcamento_valor_aprovar"></span></p>
+                    <textarea name="observacoes" placeholder="Observações (opcional)" class="w-full rounded-md border-gray-300 dark:bg-gray-900 mb-6"></textarea>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="fecharModalAprovarOrcamento()" class="px-4 py-2 border rounded-md">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md">Confirmar Aprovação</button>
                     </div>
                 </form>
             </div>
@@ -820,39 +405,132 @@
     </div>
 
     <script>
-        // Atualiza ação do formulário de aprovar/rejeitar orçamento
+        function abrirModalStatus() { 
+            document.getElementById('modal-status').classList.remove('hidden');
+            document.getElementById('modal-status').querySelector('select[name="status"]').value = '{{ $demanda->status }}';
+        }
+        function fecharModalStatus() { document.getElementById('modal-status').classList.add('hidden'); }
+        
+        function abrirModalAdicionarPrestador() { 
+            document.getElementById('modal-adicionar-prestador').classList.remove('hidden');
+        }
+        function fecharModalAdicionarPrestador() { 
+            document.getElementById('modal-adicionar-prestador').classList.add('hidden');
+            // Limpa seleções ao fechar
+            document.querySelectorAll('#modal-adicionar-prestador input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+        
+        function fecharModalAprovarOrcamento() { document.getElementById('modal-aprovar-orcamento').classList.add('hidden'); }
+        function abrirModalAprovarOrcamento(id, val, nom) {
+            document.getElementById('orcamento_id_aprovar').value = id;
+            document.getElementById('orcamento_valor_aprovar').textContent = 'R$ ' + val;
+            document.getElementById('orcamento_prestador_aprovar').textContent = nom;
+            document.getElementById('modal-aprovar-orcamento').classList.remove('hidden');
+            document.getElementById('form-aprovar-orcamento').action = '/demandas/{{ $demanda->id }}/orcamentos/' + id + '/aprovar';
+        }
+
+        // Copiar e Compartilhar Links
         document.addEventListener('DOMContentLoaded', function() {
-            const formAprovar = document.getElementById('form-aprovar-orcamento');
-            const formRejeitar = document.getElementById('form-rejeitar-orcamento');
-            const demandaId = {{ $demanda->id }};
-            
-            if (formAprovar) {
-                formAprovar.addEventListener('submit', function(e) {
-                    const orcamentoId = document.getElementById('orcamento_id_aprovar').value;
-                    if (orcamentoId) {
-                        this.action = '/demandas/' + demandaId + '/orcamentos/' + orcamentoId + '/aprovar';
+            // Função para copiar com fallback
+            function copiarTexto(texto) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    return navigator.clipboard.writeText(texto);
+                } else {
+                    // Fallback para navegadores antigos
+                    const textArea = document.createElement('textarea');
+                    textArea.value = texto;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                        const successful = document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        return successful ? Promise.resolve() : Promise.reject();
+                    } catch (err) {
+                        document.body.removeChild(textArea);
+                        return Promise.reject(err);
                     }
-                });
-            }
-            
-            if (formRejeitar) {
-                formRejeitar.addEventListener('submit', function(e) {
-                    const orcamentoId = document.getElementById('orcamento_id_rejeitar').value;
-                    if (orcamentoId) {
-                        this.action = '/demandas/' + demandaId + '/orcamentos/' + orcamentoId + '/rejeitar';
-                    }
-                });
+                }
             }
 
-            const formNegociacao = document.getElementById('form-negociacao');
-            if (formNegociacao) {
-                formNegociacao.addEventListener('submit', function(e) {
-                    const orcamentoId = document.getElementById('orcamento_id_negociacao').value;
-                    if (orcamentoId) {
-                        this.action = '/demandas/' + demandaId + '/orcamentos/' + orcamentoId + '/negociacao';
+            document.querySelectorAll('.copiar-link-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Encontra o container com data-link-url
+                    let container = this.closest('[data-link-url]');
+                    if (!container) {
+                        container = this.parentElement;
+                    }
+                    
+                    const url = container.getAttribute('data-link-url') || container.dataset.linkUrl;
+                    
+                    if (!url) {
+                        console.error('URL não encontrada');
+                        return;
+                    }
+
+                    copiarTexto(url).then(() => {
+                        const txt = this.querySelector('.copiar-texto');
+                        if (txt) {
+                            const old = txt.textContent;
+                            txt.textContent = 'Copiado!';
+                            txt.classList.remove('text-blue-600');
+                            txt.classList.add('text-green-600', 'font-bold');
+                            setTimeout(() => {
+                                txt.textContent = old;
+                                txt.classList.remove('text-green-600', 'font-bold');
+                                txt.classList.add('text-blue-600');
+                            }, 2000);
+                        }
+                    }).catch(err => {
+                        console.error('Erro ao copiar:', err);
+                        alert('Não foi possível copiar. Link: ' + url);
+                    });
+                });
+            });
+            
+            document.querySelectorAll('.compartilhar-link-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    let container = this.closest('[data-link-url]');
+                    if (!container) {
+                        container = this.parentElement;
+                    }
+                    
+                    const url = container.getAttribute('data-link-url') || container.dataset.linkUrl;
+                    const prestadorNome = container.getAttribute('data-prestador-nome') || container.dataset.prestadorNome || 'Prestador';
+                    const text = 'Olá! Você foi convidado para enviar um orçamento. Acesse: ' + url;
+                    
+                    if (navigator.share) {
+                        navigator.share({ 
+                            title: 'Orçamento - ' + prestadorNome, 
+                            text: text, 
+                            url: url 
+                        }).catch(err => {
+                            if (err.name !== 'AbortError') {
+                                window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+                            }
+                        });
+                    } else {
+                        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
                     }
                 });
-            }
+            });
         });
+
+        window.onclick = e => {
+            if (e.target.classList.contains('modal-overlay')) {
+                fecharModalStatus(); 
+                fecharModalAdicionarPrestador(); 
+                fecharModalAprovarOrcamento();
+            }
+        }
     </script>
 </x-app-layout>

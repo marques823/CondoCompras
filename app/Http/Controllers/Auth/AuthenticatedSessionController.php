@@ -28,6 +28,13 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = Auth::user();
+        
+        // Redireciona zeladores para área específica
+        if ($user->isZelador()) {
+            return redirect()->intended(route('zelador.dashboard', absolute: false));
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

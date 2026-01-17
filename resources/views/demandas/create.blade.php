@@ -32,23 +32,6 @@
                                 <x-input-error :messages="$errors->get('condominio_id')" class="mt-2" />
                             </div>
 
-                            <!-- Tipo de Serviço -->
-                            <div class="md:col-span-2">
-                                <x-input-label for="tipo_servico" :value="__('Tipo de Serviço')" />
-                                <div class="relative">
-                                    <input type="text" 
-                                           id="tipo_servico" 
-                                           class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" 
-                                           placeholder="Digite ou escolha o tipo de serviço (ex: CFTV, Elétrica, Pintura...)"
-                                           autocomplete="off"
-                                           value="{{ old('tipo_servico') }}">
-                                    <div id="tipo-servico-autocomplete" class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto hidden">
-                                        <!-- Sugestões de categorias serão inseridas aqui -->
-                                    </div>
-                                </div>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Digite o tipo de serviço para filtrar automaticamente os prestadores</p>
-                            </div>
-
                             <!-- Título -->
                             <div class="md:col-span-2">
                                 <x-input-label for="titulo" :value="__('Título da Demanda')" />
@@ -63,11 +46,32 @@
                                 <x-input-error :messages="$errors->get('descricao')" class="mt-2" />
                             </div>
 
-                            <!-- Prazo Limite -->
+                            <!-- Urgência -->
                             <div>
-                                <x-input-label for="prazo_limite" :value="__('Prazo Limite')" />
-                                <x-text-input id="prazo_limite" class="block mt-1 w-full" type="date" name="prazo_limite" :value="old('prazo_limite')" />
-                                <x-input-error :messages="$errors->get('prazo_limite')" class="mt-2" />
+                                <x-input-label for="urgencia" :value="__('Nível de Urgência')" />
+                                <select id="urgencia" name="urgencia" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
+                                    <option value="">Selecione a urgência</option>
+                                    <option value="baixa" {{ old('urgencia') == 'baixa' ? 'selected' : '' }}>Baixa</option>
+                                    <option value="media" {{ old('urgencia') == 'media' ? 'selected' : '' }}>Média</option>
+                                    <option value="alta" {{ old('urgencia') == 'alta' ? 'selected' : '' }}>Alta</option>
+                                    <option value="critica" {{ old('urgencia') == 'critica' ? 'selected' : '' }}>Crítica</option>
+                                </select>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Selecione o nível de urgência da demanda</p>
+                                <x-input-error :messages="$errors->get('urgencia')" class="mt-2" />
+                            </div>
+
+                            <!-- Anexos (Fotos) -->
+                            <div class="md:col-span-2">
+                                <x-input-label for="anexos" :value="__('Anexar Fotos (opcional)')" />
+                                <input type="file" 
+                                       id="anexos" 
+                                       name="anexos[]" 
+                                       multiple 
+                                       accept="image/*,.pdf"
+                                       class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Você pode selecionar múltiplas fotos (JPG, PNG, GIF, WEBP) ou PDFs. Máximo 10MB por arquivo.</p>
+                                <div id="anexos-preview" class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2"></div>
+                                <x-input-error :messages="$errors->get('anexos.*')" class="mt-2" />
                             </div>
 
                             <!-- Prestadores -->
@@ -165,7 +169,6 @@
     </div>
 
     <div id="condominios-data" data-condominios='@json($condominiosData)' style="display: none;"></div>
-    <div id="categorias-data" data-categorias='@json($categorias ?? [])' style="display: none;"></div>
 
     <script>
         const condominiosDataEl = document.getElementById('condominios-data');
@@ -174,12 +177,49 @@
         } else {
             window.condominiosData = [];
         }
-        
-        const categoriasDataEl = document.getElementById('categorias-data');
-        if (categoriasDataEl) {
-            window.categoriasData = JSON.parse(categoriasDataEl.getAttribute('data-categorias') || '[]');
-        } else {
-            window.categoriasData = [];
+
+        // Preview de imagens anexadas
+        document.getElementById('anexos').addEventListener('change', function(e) {
+            const preview = document.getElementById('anexos-preview');
+            preview.innerHTML = '';
+            
+            Array.from(e.target.files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const div = document.createElement('div');
+                        div.className = 'relative';
+                        div.innerHTML = `
+                            <img src="${e.target.result}" class="w-full h-24 object-cover rounded border border-gray-300">
+                            <button type="button" onclick="removerAnexo(${index})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">×</button>
+                        `;
+                        preview.appendChild(div);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    const div = document.createElement('div');
+                    div.className = 'relative';
+                    div.innerHTML = `
+                        <div class="w-full h-24 bg-gray-200 rounded border border-gray-300 flex items-center justify-center">
+                            <span class="text-xs text-gray-600">${file.name}</span>
+                        </div>
+                        <button type="button" onclick="removerAnexo(${index})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">×</button>
+                    `;
+                    preview.appendChild(div);
+                }
+            });
+        });
+
+        function removerAnexo(index) {
+            const input = document.getElementById('anexos');
+            const dt = new DataTransfer();
+            Array.from(input.files).forEach((file, i) => {
+                if (i !== index) {
+                    dt.items.add(file);
+                }
+            });
+            input.files = dt.files;
+            input.dispatchEvent(new Event('change'));
         }
     </script>
 </x-app-layout>

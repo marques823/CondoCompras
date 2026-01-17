@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Demanda;
 use App\Models\Condominio;
 use App\Models\Prestador;
+use App\Models\DemandaAnexo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class DemandaController extends Controller
 {
@@ -34,9 +37,9 @@ class DemandaController extends Controller
             $query->where('condominio_id', $request->condominio_id);
         }
 
-        // Filtro por categoria de serviço
-        if ($request->filled('categoria_servico_id')) {
-            $query->where('categoria_servico_id', $request->categoria_servico_id);
+        // Filtro por urgência
+        if ($request->filled('urgencia') && $request->urgencia !== 'todos') {
+            $query->where('urgencia', $request->urgencia);
         }
 
         // Ordenação por clique na coluna
@@ -44,7 +47,7 @@ class DemandaController extends Controller
         $ordenarDirecao = $request->get('ordenar_direcao', 'desc');
         
         // Valida coluna de ordenação
-        $colunasPermitidas = ['titulo', 'status', 'created_at', 'categoria_servico_id'];
+        $colunasPermitidas = ['titulo', 'status', 'urgencia', 'created_at'];
         if (!in_array($ordenarColuna, $colunasPermitidas)) {
             $ordenarColuna = 'created_at';
         }
@@ -55,13 +58,7 @@ class DemandaController extends Controller
         }
         
         // Aplica ordenação
-        if ($ordenarColuna === 'categoria_servico_id') {
-            $query->leftJoin('categorias_servicos', 'demandas.categoria_servico_id', '=', 'categorias_servicos.id')
-                  ->select('demandas.*')
-                  ->orderBy('categorias_servicos.nome', $ordenarDirecao);
-        } else {
-            $query->orderBy($ordenarColuna, $ordenarDirecao);
-        }
+        $query->orderBy($ordenarColuna, $ordenarDirecao);
         
         // Ordenação secundária sempre por data (mais recente primeiro) se não for por data
         if ($ordenarColuna !== 'created_at') {
@@ -69,11 +66,6 @@ class DemandaController extends Controller
         }
 
         $demandas = $query->paginate(15)->withQueryString();
-
-        // Carrega categorias para filtros
-        $categorias = \App\Models\CategoriaServico::ativas()
-            ->orderBy('nome')
-            ->get();
 
         // Prepara dados dos condomínios para JavaScript (autocomplete)
         $condominiosData = Condominio::daEmpresa(Auth::user()->empresa_id)
@@ -90,7 +82,7 @@ class DemandaController extends Controller
                 ];
             })->values();
 
-        return view('demandas.index', compact('demandas', 'categorias', 'condominiosData'));
+        return view('demandas.index', compact('demandas', 'condominiosData'));
     }
 
     public function create()
@@ -113,11 +105,6 @@ class DemandaController extends Controller
             ->orderBy('nome')
             ->get();
 
-        // Categorias de serviços para sugestões
-        $categorias = \App\Models\CategoriaServico::ativas()
-            ->orderBy('nome')
-            ->get();
-
         // Prepara dados dos condomínios para JavaScript
         $condominiosData = $condominios->map(function($c) {
             return [
@@ -136,7 +123,7 @@ class DemandaController extends Controller
             ];
         })->values();
 
-        return view('demandas.create', compact('condominios', 'prestadores', 'tags', 'condominiosData', 'categorias'));
+        return view('demandas.create', compact('condominios', 'prestadores', 'tags', 'condominiosData'));
     }
 
     public function store(Request $request)
@@ -145,9 +132,10 @@ class DemandaController extends Controller
             'condominio_id' => 'required|exists:condominios,id',
             'titulo' => 'required|string|max:255',
             'descricao' => 'required|string',
-            'prazo_limite' => 'nullable|date|after:today',
+            'urgencia' => 'nullable|in:baixa,media,alta,critica',
             'prestadores' => 'nullable|array',
             'prestadores.*' => 'exists:prestadores,id',
+            'anexos.*' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240', // 10MB por arquivo
         ]);
 
         $validated['empresa_id'] = Auth::user()->empresa_id;
@@ -155,6 +143,24 @@ class DemandaController extends Controller
         $validated['status'] = 'aberta';
 
         $demanda = Demanda::create($validated);
+
+        // Processa anexos (fotos)
+        if ($request->hasFile('anexos')) {
+            foreach ($request->file('anexos') as $arquivo) {
+                $nomeArquivo = Str::uuid() . '.' . $arquivo->getClientOriginalExtension();
+                $caminho = $arquivo->storeAs('demandas/anexos', $nomeArquivo, 'public');
+
+                DemandaAnexo::create([
+                    'demanda_id' => $demanda->id,
+                    'empresa_id' => Auth::user()->empresa_id,
+                    'nome_original' => $arquivo->getClientOriginalName(),
+                    'nome_arquivo' => $nomeArquivo,
+                    'caminho' => $caminho,
+                    'mime_type' => $arquivo->getMimeType(),
+                    'tamanho' => $arquivo->getSize(),
+                ]);
+            }
+        }
 
         // Associa prestadores se fornecidos
         if ($request->has('prestadores')) {
@@ -179,9 +185,9 @@ class DemandaController extends Controller
             abort(403);
         }
 
-        $demanda->load(['condominio', 'categoriaServico', 'usuario', 'prestadores', 'orcamentos' => function($query) {
+        $demanda->load(['condominio', 'usuario', 'prestadores', 'orcamentos' => function($query) {
             $query->with('negociacoes');
-        }, 'links', 'negociacoes']);
+        }, 'links', 'negociacoes', 'anexos']);
 
         // Prestadores disponíveis para adicionar (excluindo os já associados)
         $prestadoresIds = $demanda->prestadores->pluck('id')->toArray();
@@ -218,10 +224,6 @@ class DemandaController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $categorias = \App\Models\CategoriaServico::ativas()
-            ->orderBy('nome')
-            ->get();
-
         // Prepara dados dos condomínios para JavaScript
         $condominiosData = $condominios->map(function($c) {
             return [
@@ -243,7 +245,7 @@ class DemandaController extends Controller
         // Prestadores já associados à demanda
         $prestadoresSelecionados = $demanda->prestadores->pluck('id')->toArray();
 
-        return view('demandas.edit', compact('demanda', 'condominios', 'prestadores', 'tags', 'condominiosData', 'categorias', 'prestadoresSelecionados'));
+        return view('demandas.edit', compact('demanda', 'condominios', 'prestadores', 'tags', 'condominiosData', 'prestadoresSelecionados'));
     }
 
     public function update(Request $request, Demanda $demanda)
@@ -254,16 +256,34 @@ class DemandaController extends Controller
 
         $validated = $request->validate([
             'condominio_id' => 'required|exists:condominios,id',
-            'categoria_servico_id' => 'nullable|exists:categorias_servicos,id',
             'titulo' => 'required|string|max:255',
             'descricao' => 'required|string',
-            'prazo_limite' => 'nullable|date',
+            'urgencia' => 'nullable|in:baixa,media,alta,critica',
             'observacoes' => 'nullable|string',
             'prestadores' => 'nullable|array',
             'prestadores.*' => 'exists:prestadores,id',
+            'anexos.*' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240', // 10MB por arquivo
         ]);
 
         $demanda->update($validated);
+
+        // Processa novos anexos (fotos)
+        if ($request->hasFile('anexos')) {
+            foreach ($request->file('anexos') as $arquivo) {
+                $nomeArquivo = Str::uuid() . '.' . $arquivo->getClientOriginalExtension();
+                $caminho = $arquivo->storeAs('demandas/anexos', $nomeArquivo, 'public');
+
+                DemandaAnexo::create([
+                    'demanda_id' => $demanda->id,
+                    'empresa_id' => Auth::user()->empresa_id,
+                    'nome_original' => $arquivo->getClientOriginalName(),
+                    'nome_arquivo' => $nomeArquivo,
+                    'caminho' => $caminho,
+                    'mime_type' => $arquivo->getMimeType(),
+                    'tamanho' => $arquivo->getSize(),
+                ]);
+            }
+        }
 
         // Gerencia prestadores
         if ($request->has('prestadores')) {

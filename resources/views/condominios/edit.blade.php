@@ -135,6 +135,60 @@
                                 <textarea id="observacoes" name="observacoes" rows="3" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">{{ old('observacoes', $condominio->observacoes) }}</textarea>
                                 <x-input-error :messages="$errors->get('observacoes')" class="mt-2" />
                             </div>
+
+                            <!-- Seção Zelador (Opcional) -->
+                            <div class="md:col-span-2">
+                                <div class="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+                                    <h3 class="text-lg font-medium mb-4">Usuário Zelador</h3>
+                                    @php
+                                        $zelador = \App\Models\User::where('condominio_id', $condominio->id)
+                                            ->where('perfil', 'zelador')
+                                            ->first();
+                                    @endphp
+                                    
+                                    @if($zelador)
+                                        <div class="mb-4 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+                                            <p class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Zelador atual:</p>
+                                            <p class="text-sm text-blue-800 dark:text-blue-200"><strong>Nome:</strong> {{ $zelador->name }}</p>
+                                            <p class="text-sm text-blue-800 dark:text-blue-200"><strong>E-mail:</strong> {{ $zelador->email }}</p>
+                                            <p class="text-xs text-blue-600 dark:text-blue-300 mt-2">Para alterar, preencha os campos abaixo com novos dados.</p>
+                                        </div>
+                                    @else
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Nenhum zelador cadastrado. Preencha os campos abaixo para criar um usuário zelador.</p>
+                                    @endif
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <!-- Nome do Zelador -->
+                                        <div>
+                                            <x-input-label for="zelador_nome" :value="__('Nome do Zelador')" />
+                                            <x-text-input id="zelador_nome" class="block mt-1 w-full" type="text" name="zelador_nome" :value="old('zelador_nome', $zelador->name ?? '')" />
+                                            <x-input-error :messages="$errors->get('zelador_nome')" class="mt-2" />
+                                        </div>
+
+                                        <!-- Email do Zelador -->
+                                        <div>
+                                            <x-input-label for="zelador_email" :value="__('E-mail do Zelador')" />
+                                            <x-text-input id="zelador_email" class="block mt-1 w-full" type="email" name="zelador_email" :value="old('zelador_email', $zelador->email ?? '')" />
+                                            <x-input-error :messages="$errors->get('zelador_email')" class="mt-2" />
+                                        </div>
+
+                                        <!-- Senha do Zelador -->
+                                        <div>
+                                            <x-input-label for="zelador_password" :value="__('Senha')" />
+                                            <x-text-input id="zelador_password" class="block mt-1 w-full" type="password" name="zelador_password" />
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $zelador ? 'Deixe em branco para manter a senha atual' : 'Mínimo de 8 caracteres' }}</p>
+                                            <x-input-error :messages="$errors->get('zelador_password')" class="mt-2" />
+                                        </div>
+
+                                        <!-- Confirmar Senha -->
+                                        <div>
+                                            <x-input-label for="zelador_password_confirmation" :value="__('Confirmar Senha')" />
+                                            <x-text-input id="zelador_password_confirmation" class="block mt-1 w-full" type="password" name="zelador_password_confirmation" />
+                                            <x-input-error :messages="$errors->get('zelador_password_confirmation')" class="mt-2" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="flex items-center justify-end mt-6">

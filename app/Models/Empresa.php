@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Empresa extends Model
 {
@@ -17,6 +18,7 @@ class Empresa extends Model
         'email',
         'telefone',
         'endereco',
+        'token_cadastro',
         'ativo',
     ];
 
@@ -78,5 +80,17 @@ class Empresa extends Model
     public function scopeAtivas($query)
     {
         return $query->where('ativo', true);
+    }
+
+    /**
+     * Gera um token único para cadastro de prestadores
+     */
+    public static function gerarTokenCadastro(): string
+    {
+        do {
+            $token = Str::random(32);
+        } while (self::where('token_cadastro', $token)->exists());
+
+        return $token;
     }
 }
