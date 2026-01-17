@@ -16,7 +16,7 @@ class PrestadorApiController extends Controller
     {
         $user = Auth::user();
 
-        $query = Prestador::daEmpresa($user->empresa_id)
+        $query = Prestador::daAdministradora($user->administradora_id)
             ->ativos()
             ->with(['categorias', 'regioes']);
 
@@ -45,7 +45,7 @@ class PrestadorApiController extends Controller
     {
         $user = Auth::user();
 
-        $prestador = Prestador::daEmpresa($user->empresa_id)
+        $prestador = Prestador::daAdministradora($user->administradora_id)
             ->with(['categorias', 'regioes', 'empresa'])
             ->findOrFail($id);
 

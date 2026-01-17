@@ -13,7 +13,7 @@ class TagController extends Controller
      */
     public function index()
     {
-        $tags = Tag::daEmpresa(Auth::user()->empresa_id)
+        $tags = Tag::daAdministradora(Auth::user()->administradora_id)
             ->orderBy('ordem')
             ->orderBy('nome')
             ->paginate(20);
@@ -42,7 +42,7 @@ class TagController extends Controller
             'ordem' => 'nullable|integer|min:0',
         ]);
 
-        $validated['empresa_id'] = Auth::user()->empresa_id;
+        $validated['administradora_id'] = Auth::user()->administradora_id;
         $validated['ativo'] = true;
 
         Tag::create($validated);
@@ -56,7 +56,7 @@ class TagController extends Controller
      */
     public function show(Tag $tag)
     {
-        if ($tag->empresa_id !== Auth::user()->empresa_id) {
+        if ($tag->administradora_id !== Auth::user()->administradora_id) {
             abort(403);
         }
 
@@ -70,7 +70,7 @@ class TagController extends Controller
      */
     public function edit(Tag $tag)
     {
-        if ($tag->empresa_id !== Auth::user()->empresa_id) {
+        if ($tag->administradora_id !== Auth::user()->administradora_id) {
             abort(403);
         }
 
@@ -82,7 +82,7 @@ class TagController extends Controller
      */
     public function update(Request $request, Tag $tag)
     {
-        if ($tag->empresa_id !== Auth::user()->empresa_id) {
+        if ($tag->administradora_id !== Auth::user()->administradora_id) {
             abort(403);
         }
 
@@ -106,7 +106,7 @@ class TagController extends Controller
      */
     public function destroy(Tag $tag)
     {
-        if ($tag->empresa_id !== Auth::user()->empresa_id) {
+        if ($tag->administradora_id !== Auth::user()->administradora_id) {
             abort(403);
         }
 

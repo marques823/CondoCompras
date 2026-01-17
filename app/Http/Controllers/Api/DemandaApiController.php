@@ -18,7 +18,7 @@ class DemandaApiController extends Controller
     {
         $user = Auth::user();
         
-        $query = Demanda::daEmpresa($user->empresa_id)
+        $query = Demanda::daAdministradora($user->administradora_id)
             ->with(['condominio', 'categoriaServico', 'usuario', 'prestadores']);
 
         // Filtros
@@ -61,11 +61,11 @@ class DemandaApiController extends Controller
 
         // Verifica se o condomínio pertence à empresa do usuário
         $condominio = \App\Models\Condominio::where('id', $request->condominio_id)
-            ->where('empresa_id', $user->empresa_id)
+            ->where('administradora_id', $user->administradora_id)
             ->firstOrFail();
 
         $demanda = Demanda::create([
-            'empresa_id' => $user->empresa_id,
+            'administradora_id' => $user->administradora_id,
             'condominio_id' => $request->condominio_id,
             'categoria_servico_id' => $request->categoria_servico_id,
             'usuario_id' => $user->id,
@@ -79,7 +79,7 @@ class DemandaApiController extends Controller
         if ($request->has('prestadores') && is_array($request->prestadores)) {
             $prestadoresIds = array_filter($request->prestadores, function ($id) use ($user) {
                 return \App\Models\Prestador::where('id', $id)
-                    ->where('empresa_id', $user->empresa_id)
+                    ->where('administradora_id', $user->administradora_id)
                     ->exists();
             });
 
@@ -114,7 +114,7 @@ class DemandaApiController extends Controller
     {
         $user = Auth::user();
 
-        $demanda = Demanda::daEmpresa($user->empresa_id)
+        $demanda = Demanda::daAdministradora($user->administradora_id)
             ->with(['condominio', 'categoriaServico', 'usuario', 'prestadores', 'orcamentos', 'documentos', 'links'])
             ->findOrFail($id);
 
@@ -128,7 +128,7 @@ class DemandaApiController extends Controller
     {
         $user = Auth::user();
 
-        $demanda = Demanda::daEmpresa($user->empresa_id)->findOrFail($id);
+        $demanda = Demanda::daAdministradora($user->administradora_id)->findOrFail($id);
 
         $validator = Validator::make($request->all(), [
             'titulo' => 'sometimes|string|max:255',
@@ -161,7 +161,7 @@ class DemandaApiController extends Controller
     {
         $user = Auth::user();
 
-        $demanda = Demanda::daEmpresa($user->empresa_id)->findOrFail($id);
+        $demanda = Demanda::daAdministradora($user->administradora_id)->findOrFail($id);
         $demanda->delete();
 
         return response()->json([

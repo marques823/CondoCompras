@@ -30,9 +30,13 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
         
-        // Redireciona zeladores para área específica
+        // Redireciona baseado no perfil
         if ($user->isZelador()) {
             return redirect()->intended(route('zelador.dashboard', absolute: false));
+        } elseif ($user->isGerente()) {
+            return redirect()->intended(route('gerente.dashboard', absolute: false));
+        } elseif ($user->isAdministradora()) {
+            return redirect()->intended(route('administradora.dashboard', absolute: false));
         }
 
         return redirect()->intended(route('dashboard', absolute: false));

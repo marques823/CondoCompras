@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Auditoria extends Model
 {
     protected $fillable = [
-        'empresa_id',
+        'administradora_id',
         'usuario_id',
         'modelo',
         'modelo_id',
@@ -26,11 +26,11 @@ class Auditoria extends Model
     ];
 
     /**
-     * Relacionamento com Empresa
+     * Relacionamento com Administradora
      */
     public function empresa(): BelongsTo
     {
-        return $this->belongsTo(Empresa::class);
+        return $this->belongsTo(Administradora::class);
     }
 
     /**
@@ -46,7 +46,7 @@ class Auditoria extends Model
      */
     public function scopeDaEmpresa($query, $empresaId)
     {
-        return $query->where('empresa_id', $empresaId);
+        return $query->where('administradora_id', $empresaId);
     }
 
     /**

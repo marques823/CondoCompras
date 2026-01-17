@@ -69,7 +69,7 @@ class ZeladorDemandaController extends Controller
         ]);
 
         $demanda = Demanda::create([
-            'empresa_id' => $user->empresa_id,
+            'administradora_id' => $user->administradora_id,
             'condominio_id' => $condominio->id,
             'usuario_id' => $user->id,
             'titulo' => (string) $validated['titulo'],
@@ -86,7 +86,7 @@ class ZeladorDemandaController extends Controller
 
                 DemandaAnexo::create([
                     'demanda_id' => $demanda->id,
-                    'empresa_id' => $user->empresa_id,
+                    'administradora_id' => $user->administradora_id,
                     'nome_original' => $arquivo->getClientOriginalName(),
                     'nome_arquivo' => $nomeArquivo,
                     'caminho' => $caminho,

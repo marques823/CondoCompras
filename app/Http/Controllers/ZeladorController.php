@@ -14,25 +14,20 @@ class ZeladorController extends Controller
     {
         $user = Auth::user();
         
-        if (!$user->isZelador() || !$user->condominio_id) {
-            abort(403, 'Acesso negado. Você não é um zelador.');
-        }
-
         $condominio = $user->condominio;
         
-        // Estatísticas
-        $totalDemandas = $condominio->demandas()->count();
-        $demandasAbertas = $condominio->demandas()->where('status', 'aberta')->count();
-        $demandasEmAndamento = $condominio->demandas()->where('status', 'em_andamento')->count();
-        $demandasConcluidas = $condominio->demandas()->where('status', 'concluida')->count();
+        if (!$condominio) {
+            return view('zelador.no_condo'); // Caso o zelador não tenha condomínio vinculado
+        }
+        
+        // Estatísticas (Global Scope já garante isolamento por administradora, e aqui filtramos por condomínio)
+        $stats = [
+            'total_demandas' => $condominio->demandas()->count(),
+            'demandas_abertas' => $condominio->demandas()->where('status', 'aberta')->count(),
+            'demandas_em_andamento' => $condominio->demandas()->where('status', 'em_andamento')->count(),
+            'demandas_recentes' => $condominio->demandas()->with('categoriaServico')->orderBy('created_at', 'desc')->limit(10)->get(),
+        ];
 
-        // Demandas recentes
-        $demandasRecentes = $condominio->demandas()
-            ->with('categoriaServico')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        return view('zelador.dashboard', compact('condominio', 'totalDemandas', 'demandasAbertas', 'demandasEmAndamento', 'demandasConcluidas', 'demandasRecentes'));
+        return view('zelador.dashboard', compact('condominio', 'stats'));
     }
 }

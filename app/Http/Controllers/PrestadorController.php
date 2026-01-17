@@ -10,7 +10,8 @@ class PrestadorController extends Controller
 {
     public function index()
     {
-        $prestadores = Prestador::daEmpresa(Auth::user()->empresa_id)
+        // Admin não acessa esta área (redirecionado no middleware)
+        $prestadores = Prestador::daAdministradora(Auth::user()->administradora_id)
             ->with('tags')
             ->orderBy('nome_razao_social')
             ->paginate(15);
@@ -20,7 +21,7 @@ class PrestadorController extends Controller
 
     public function create()
     {
-        $tags = \App\Models\Tag::daEmpresa(Auth::user()->empresa_id)
+        $tags = \App\Models\Tag::daAdministradora(Auth::user()->administradora_id)
             ->porTipo('prestador')
             ->ativas()
             ->orderBy('ordem')
@@ -51,14 +52,14 @@ class PrestadorController extends Controller
                 'exists:tags,id',
                 function ($attribute, $value, $fail) {
                     $tag = \App\Models\Tag::find($value);
-                    if ($tag && $tag->empresa_id !== Auth::user()->empresa_id) {
+                    if ($tag && $tag->administradora_id !== Auth::user()->administradora_id) {
                         $fail('A tag selecionada não pertence à sua empresa.');
                     }
                 },
             ],
         ]);
 
-        $validated['empresa_id'] = Auth::user()->empresa_id;
+        $validated['administradora_id'] = Auth::user()->administradora_id;
         $validated['ativo'] = true;
 
         $tags = $validated['tags'] ?? [];
@@ -77,7 +78,7 @@ class PrestadorController extends Controller
 
     public function show($id)
     {
-        $prestador = Prestador::daEmpresa(Auth::user()->empresa_id)
+        $prestador = Prestador::daAdministradora(Auth::user()->administradora_id)
             ->with('tags')
             ->findOrFail($id);
 
@@ -86,10 +87,10 @@ class PrestadorController extends Controller
 
     public function edit($id)
     {
-        $prestador = Prestador::daEmpresa(Auth::user()->empresa_id)
+        $prestador = Prestador::daAdministradora(Auth::user()->administradora_id)
             ->findOrFail($id);
 
-        $tags = \App\Models\Tag::daEmpresa(Auth::user()->empresa_id)
+        $tags = \App\Models\Tag::daAdministradora(Auth::user()->administradora_id)
             ->porTipo('prestador')
             ->ativas()
             ->orderBy('ordem')
@@ -103,7 +104,7 @@ class PrestadorController extends Controller
 
     public function update(Request $request, $id)
     {
-        $prestador = Prestador::daEmpresa(Auth::user()->empresa_id)
+        $prestador = Prestador::daAdministradora(Auth::user()->administradora_id)
             ->findOrFail($id);
 
         $validated = $request->validate([
@@ -126,7 +127,7 @@ class PrestadorController extends Controller
                 'exists:tags,id',
                 function ($attribute, $value, $fail) {
                     $tag = \App\Models\Tag::find($value);
-                    if ($tag && $tag->empresa_id !== Auth::user()->empresa_id) {
+                    if ($tag && $tag->administradora_id !== Auth::user()->administradora_id) {
                         $fail('A tag selecionada não pertence à sua empresa.');
                     }
                 },
@@ -147,7 +148,7 @@ class PrestadorController extends Controller
 
     public function destroy($id)
     {
-        $prestador = Prestador::daEmpresa(Auth::user()->empresa_id)
+        $prestador = Prestador::daAdministradora(Auth::user()->administradora_id)
             ->findOrFail($id);
 
         $prestador->delete();

@@ -12,6 +12,7 @@ class EnsureUserIsNotZelador
     /**
      * Handle an incoming request.
      * Bloqueia acesso de zeladores às rotas administrativas
+     * Permite acesso para admin e administradora
      */
     public function handle(Request $request, Closure $next): Response
     {

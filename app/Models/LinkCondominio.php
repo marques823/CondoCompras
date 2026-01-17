@@ -5,15 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
+use App\Traits\BelongsToAdministradora;
 
 class LinkCondominio extends Model
 {
+    use BelongsToAdministradora;
     protected $table = 'links_condominio';
 
     protected $fillable = [
         'condominio_id',
-        'empresa_id',
+        'administradora_id',
         'token',
         'titulo',
         'ativo',
@@ -35,11 +36,11 @@ class LinkCondominio extends Model
     }
 
     /**
-     * Relacionamento com Empresa
+     * Relacionamento com Administradora
      */
-    public function empresa(): BelongsTo
+    public function administradora(): BelongsTo
     {
-        return $this->belongsTo(Empresa::class);
+        return $this->belongsTo(Administradora::class, 'administradora_id');
     }
 
     /**
