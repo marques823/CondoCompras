@@ -35,7 +35,11 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureUserBelongsToE
 
     // Demandas
     Route::resource('demandas', DemandaController::class);
-    Route::post('demandas/{demanda}/gerar-links', [DemandaController::class, 'gerarLinks'])->name('demandas.gerar-links');
+    Route::post('demandas/{demanda}/status', [DemandaController::class, 'updateStatus'])->name('demandas.update-status');
+    Route::post('demandas/{demanda}/prestadores', [DemandaController::class, 'adicionarPrestadores'])->name('demandas.adicionar-prestadores');
+    Route::delete('demandas/{demanda}/prestadores/{prestador}', [DemandaController::class, 'removerPrestador'])->name('demandas.remover-prestador');
+    Route::post('demandas/{demanda}/orcamentos/{orcamento}/aprovar', [DemandaController::class, 'aprovarOrcamento'])->name('demandas.aprovar-orcamento');
+    Route::post('demandas/{demanda}/orcamentos/{orcamento}/rejeitar', [DemandaController::class, 'rejeitarOrcamento'])->name('demandas.rejeitar-orcamento');
 
     // Orçamentos
     Route::resource('orcamentos', OrcamentoController::class);
