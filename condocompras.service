@@ -1,0 +1,17 @@
+[Unit]
+Description=CondoCompras Laravel Application
+After=network.target
+
+[Service]
+Type=simple
+User=tiago
+WorkingDirectory=/home/tiago/condocompras
+ExecStart=/usr/bin/php artisan serve --host=0.0.0.0 --port=7899
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=condocompras
+
+[Install]
+WantedBy=multi-user.target

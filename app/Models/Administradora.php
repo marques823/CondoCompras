@@ -7,9 +7,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-class Empresa extends Model
+class Administradora extends Model
 {
     use SoftDeletes;
+
+    protected $table = 'administradoras';
 
     protected $fillable = [
         'nome',
@@ -18,6 +20,12 @@ class Empresa extends Model
         'email',
         'telefone',
         'endereco',
+        'numero',
+        'complemento',
+        'bairro',
+        'cidade',
+        'estado',
+        'cep',
         'token_cadastro',
         'ativo',
     ];
@@ -27,11 +35,21 @@ class Empresa extends Model
     ];
 
     /**
-     * Relacionamento com Usuários
+     * Relacionamento com Usuários (Administradores da empresa e Gerentes)
      */
     public function usuarios(): HasMany
     {
-        return $this->hasMany(User::class);
+        return $this->hasMany(User::class, 'administradora_id');
+    }
+
+    /**
+     * Relacionamento com Gerentes (Usuários com role gerente)
+     */
+    public function gerentes(): HasMany
+    {
+        return $this->hasMany(User::class, 'administradora_id')->whereHas('roles', function($q) {
+            $q->where('name', 'gerente');
+        });
     }
 
     /**
@@ -39,7 +57,15 @@ class Empresa extends Model
      */
     public function condominios(): HasMany
     {
-        return $this->hasMany(Condominio::class);
+        return $this->hasMany(Condominio::class, 'administradora_id');
+    }
+
+    /**
+     * Relacionamento com Zeladores
+     */
+    public function zeladores(): HasMany
+    {
+        return $this->hasMany(Zelador::class, 'administradora_id');
     }
 
     /**
@@ -47,7 +73,7 @@ class Empresa extends Model
      */
     public function prestadores(): HasMany
     {
-        return $this->hasMany(Prestador::class);
+        return $this->hasMany(Prestador::class, 'administradora_id');
     }
 
     /**
@@ -55,7 +81,7 @@ class Empresa extends Model
      */
     public function demandas(): HasMany
     {
-        return $this->hasMany(Demanda::class);
+        return $this->hasMany(Demanda::class, 'administradora_id');
     }
 
     /**
@@ -63,19 +89,11 @@ class Empresa extends Model
      */
     public function documentos(): HasMany
     {
-        return $this->hasMany(Documento::class);
+        return $this->hasMany(Documento::class, 'administradora_id');
     }
 
     /**
-     * Relacionamento com Auditoria
-     */
-    public function auditorias(): HasMany
-    {
-        return $this->hasMany(Auditoria::class);
-    }
-
-    /**
-     * Scope para empresas ativas
+     * Scope para administradoras ativas
      */
     public function scopeAtivas($query)
     {
@@ -83,7 +101,7 @@ class Empresa extends Model
     }
 
     /**
-     * Gera um token único para cadastro de prestadores
+     * Gera um token único para cadastro
      */
     public static function gerarTokenCadastro(): string
     {

@@ -13,7 +13,8 @@ class DocumentoController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Documento::daEmpresa(Auth::user()->empresa_id)
+        // Admin não acessa esta área (redirecionado no middleware)
+        $query = Documento::daAdministradora(Auth::user()->administradora_id)
             ->with(['condominio', 'demanda.categoriaServico', 'demanda.condominio', 'orcamento', 'prestador']);
 
         // Filtro por pesquisa (nome do arquivo, condomínio)
@@ -99,7 +100,7 @@ class DocumentoController extends Controller
         $documentos = $query->paginate(15)->withQueryString();
 
         // Carrega dados para filtros
-        $condominiosData = Condominio::daEmpresa(Auth::user()->empresa_id)
+        $condominiosData = Condominio::daAdministradora(Auth::user()->administradora_id)
             ->ativos()
             ->select('id', 'nome', 'bairro', 'cidade')
             ->orderBy('nome')
@@ -113,7 +114,7 @@ class DocumentoController extends Controller
                 ];
             })->values();
 
-        $prestadores = Prestador::daEmpresa(Auth::user()->empresa_id)
+        $prestadores = Prestador::daAdministradora(Auth::user()->administradora_id)
             ->ativos()
             ->select('id', 'nome_razao_social')
             ->orderBy('nome_razao_social')
@@ -132,7 +133,7 @@ class DocumentoController extends Controller
     public function visualizar(Documento $documento)
     {
         // Verifica se o documento pertence à empresa do usuário
-        if ($documento->empresa_id !== Auth::user()->empresa_id) {
+        if ($documento->administradora_id !== Auth::user()->administradora_id) {
             abort(403);
         }
 
@@ -155,7 +156,7 @@ class DocumentoController extends Controller
     public function download(Documento $documento)
     {
         // Verifica se o documento pertence à empresa do usuário
-        if ($documento->empresa_id !== Auth::user()->empresa_id) {
+        if ($documento->administradora_id !== Auth::user()->administradora_id) {
             abort(403);
         }
 

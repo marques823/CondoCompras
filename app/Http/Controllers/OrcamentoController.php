@@ -13,8 +13,9 @@ class OrcamentoController extends Controller
 {
     public function index(Request $request)
     {
+        // Admin não acessa esta área (redirecionado no middleware)
         $query = Orcamento::whereHas('demanda', function($q) {
-                $q->where('empresa_id', Auth::user()->empresa_id);
+                $q->where('administradora_id', Auth::user()->administradora_id);
             })
             ->with(['demanda.condominio', 'demanda.categoriaServico', 'prestador']);
 
@@ -93,7 +94,7 @@ class OrcamentoController extends Controller
         $orcamentos = $query->paginate(15)->withQueryString();
 
         // Carrega dados para filtros
-        $condominiosData = Condominio::daEmpresa(Auth::user()->empresa_id)
+        $condominiosData = Condominio::daAdministradora(Auth::user()->administradora_id)
             ->ativos()
             ->select('id', 'nome', 'bairro', 'cidade')
             ->orderBy('nome')
@@ -107,7 +108,7 @@ class OrcamentoController extends Controller
                 ];
             })->values();
 
-        $prestadores = Prestador::daEmpresa(Auth::user()->empresa_id)
+        $prestadores = Prestador::daAdministradora(Auth::user()->administradora_id)
             ->ativos()
             ->select('id', 'nome_razao_social')
             ->orderBy('nome_razao_social')
@@ -118,7 +119,7 @@ class OrcamentoController extends Controller
 
     public function show(Orcamento $orcamento)
     {
-        if ($orcamento->demanda->empresa_id !== Auth::user()->empresa_id) {
+        if ($orcamento->demanda->administradora_id !== Auth::user()->administradora_id) {
             abort(403);
         }
 
@@ -138,7 +139,7 @@ class OrcamentoController extends Controller
 
     public function aprovar(Orcamento $orcamento)
     {
-        if ($orcamento->demanda->empresa_id !== Auth::user()->empresa_id) {
+        if ($orcamento->demanda->administradora_id !== Auth::user()->administradora_id) {
             abort(403);
         }
 
@@ -166,7 +167,7 @@ class OrcamentoController extends Controller
 
     public function rejeitar(Request $request, Orcamento $orcamento)
     {
-        if ($orcamento->demanda->empresa_id !== Auth::user()->empresa_id) {
+        if ($orcamento->demanda->administradora_id !== Auth::user()->administradora_id) {
             abort(403);
         }
 

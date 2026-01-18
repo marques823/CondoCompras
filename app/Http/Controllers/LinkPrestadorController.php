@@ -114,7 +114,7 @@ class LinkPrestadorController extends Controller
             $caminho = $arquivo->storeAs('documentos/orcamentos', $nomeArquivo, 'public');
 
             $orcamento->documentos()->create([
-                'empresa_id' => $link->demanda->empresa_id,
+                'administradora_id' => $link->demanda->administradora_id,
                 'condominio_id' => $link->demanda->condominio_id,
                 'demanda_id' => $link->demanda->id,
                 'prestador_id' => $link->prestador_id,

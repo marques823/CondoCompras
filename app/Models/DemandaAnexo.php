@@ -11,7 +11,7 @@ class DemandaAnexo extends Model
 
     protected $fillable = [
         'demanda_id',
-        'empresa_id',
+        'administradora_id',
         'nome_original',
         'nome_arquivo',
         'caminho',
@@ -28,11 +28,11 @@ class DemandaAnexo extends Model
     }
 
     /**
-     * Relacionamento com Empresa
+     * Relacionamento com Administradora
      */
     public function empresa(): BelongsTo
     {
-        return $this->belongsTo(Empresa::class);
+        return $this->belongsTo(Administradora::class);
     }
 
     /**

@@ -6,13 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Traits\BelongsToAdministradora;
 
 class Tag extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToAdministradora;
 
     protected $fillable = [
-        'empresa_id',
+        'administradora_id',
         'nome',
         'cor',
         'descricao',
@@ -27,11 +28,11 @@ class Tag extends Model
     ];
 
     /**
-     * Relacionamento com Empresa
+     * Relacionamento com Administradora
      */
-    public function empresa(): BelongsTo
+    public function administradora(): BelongsTo
     {
-        return $this->belongsTo(Empresa::class);
+        return $this->belongsTo(Administradora::class, 'administradora_id');
     }
 
     /**
@@ -59,11 +60,11 @@ class Tag extends Model
     }
 
     /**
-     * Scope para filtrar por empresa
+     * Scope para filtrar por administradora
      */
-    public function scopeDaEmpresa($query, $empresaId)
+    public function scopeDaAdministradora($query, $id)
     {
-        return $query->where('empresa_id', $empresaId);
+        return $query->where('administradora_id', $id);
     }
 
     /**

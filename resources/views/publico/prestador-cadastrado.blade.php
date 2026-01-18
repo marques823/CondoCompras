@@ -21,7 +21,7 @@
                         <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-2">Dados Cadastrados:</h3>
                         <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                             <p><span class="font-medium">Nome/Razão Social:</span> {{ $prestador->nome_razao_social }}</p>
-                            <p><span class="font-medium">Empresa:</span> {{ $empresa->nome }}</p>
+                            <p><span class="font-medium">Administradora:</span> {{ $empresa->nome }}</p>
                             @if($prestador->cpf_cnpj)
                                 <p><span class="font-medium">CPF/CNPJ:</span> {{ $prestador->cpf_cnpj }}</p>
                             @endif

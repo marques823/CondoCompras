@@ -7,13 +7,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\BelongsToAdministradora;
 
 class Demanda extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToAdministradora;
 
     protected $fillable = [
-        'empresa_id',
+        'administradora_id',
         'condominio_id',
         'categoria_servico_id',
         'usuario_id',
@@ -25,11 +26,11 @@ class Demanda extends Model
     ];
 
     /**
-     * Relacionamento com Empresa
+     * Relacionamento com Administradora
      */
-    public function empresa(): BelongsTo
+    public function administradora(): BelongsTo
     {
-        return $this->belongsTo(Empresa::class);
+        return $this->belongsTo(Administradora::class, 'administradora_id');
     }
 
     /**
@@ -53,7 +54,7 @@ class Demanda extends Model
      */
     public function usuario(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'usuario_id');
     }
 
     /**
@@ -107,11 +108,11 @@ class Demanda extends Model
     }
 
     /**
-     * Scope para filtrar por empresa
+     * Scope para filtrar por administradora
      */
-    public function scopeDaEmpresa($query, $empresaId)
+    public function scopeDaAdministradora($query, $id)
     {
-        return $query->where('empresa_id', $empresaId);
+        return $query->where('administradora_id', $id);
     }
 
     /**

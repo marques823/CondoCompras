@@ -32,23 +32,6 @@
                         @csrf
 
                         <div class="space-y-6">
-                            <!-- Tipo de Serviço -->
-                            <div>
-                                <label for="categoria_servico_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Tipo de Serviço <span class="text-red-500">*</span>
-                                </label>
-                                <select id="categoria_servico_id" name="categoria_servico_id" class="block w-full mt-1 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
-                                    <option value="">Selecione o tipo de serviço</option>
-                                    @foreach($categorias as $categoria)
-                                        <option value="{{ $categoria->id }}" {{ old('categoria_servico_id') == $categoria->id ? 'selected' : '' }}>
-                                            {{ $categoria->nome }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Selecione o tipo de serviço desejado</p>
-                                <x-input-error :messages="$errors->get('categoria_servico_id')" class="mt-2" />
-                            </div>
-
                             <!-- Título -->
                             <div>
                                 <label for="titulo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -65,16 +48,6 @@
                                 </label>
                                 <textarea id="descricao" name="descricao" rows="6" required class="block w-full mt-1 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" placeholder="Descreva detalhadamente o serviço necessário...">{{ old('descricao') }}</textarea>
                                 <x-input-error :messages="$errors->get('descricao')" class="mt-2" />
-                            </div>
-
-                            <!-- Prazo Limite -->
-                            <div>
-                                <label for="prazo_limite" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Prazo Limite
-                                </label>
-                                <input type="date" id="prazo_limite" name="prazo_limite" value="{{ old('prazo_limite') }}" min="{{ date('Y-m-d', strtotime('+1 day')) }}" class="block w-full mt-1 border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Data limite para realização do serviço (opcional)</p>
-                                <x-input-error :messages="$errors->get('prazo_limite')" class="mt-2" />
                             </div>
 
                             <!-- Dados do Solicitante -->

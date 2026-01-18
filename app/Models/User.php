@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Traits\BelongsToAdministradora;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, BelongsToAdministradora;
 
     /**
      * The attributes that are mass assignable.
@@ -22,9 +24,9 @@ class User extends Authenticatable
         'email',
         'telefone',
         'password',
-        'empresa_id',
+        'administradora_id',
         'condominio_id',
-        'perfil',
+        'perfil', // Mantendo por compatibilidade enquanto migramos totalmente para Roles
     ];
 
     /**
@@ -51,42 +53,84 @@ class User extends Authenticatable
     }
 
     /**
-     * Relacionamento com Empresa
+     * Relacionamento com Administradora (Tenancy principal)
      */
-    public function empresa()
+    public function administradora(): BelongsTo
     {
-        return $this->belongsTo(Empresa::class);
+        return $this->belongsTo(Administradora::class, 'administradora_id');
     }
 
     /**
-     * Relacionamento com Condomínio
+     * Relacionamento com Condomínio (Principalmente para Zeladores)
      */
-    public function condominio()
+    public function condominio(): BelongsTo
     {
         return $this->belongsTo(Condominio::class);
     }
 
     /**
-     * Verifica se o usuário é admin
+     * Relacionamento com Zelador (Dados extras)
      */
+    public function zelador(): HasOne
+    {
+        return $this->hasOne(Zelador::class);
+    }
+
+    /**
+     * Roles do usuário
+     */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class);
+    }
+
+    /**
+     * Verifica se o usuário tem uma determinada role
+     */
+    public function hasRole($role): bool
+    {
+        if (is_string($role)) {
+            return $this->roles->contains('name', $role);
+        }
+
+        return !! $role->intersect($this->roles)->count();
+    }
+
+    /**
+     * Verifica se o usuário tem uma permissão (via roles)
+     */
+    public function hasPermission($permission): bool
+    {
+        return $this->roles->map->permissions->flatten()->contains('name', $permission);
+    }
+
+    // Métodos de conveniência baseados na hierarquia solicitada
+
     public function isAdmin(): bool
     {
-        return $this->perfil === 'admin';
+        return $this->hasRole('admin') || $this->perfil === 'admin';
     }
 
-    /**
-     * Verifica se o usuário é zelador
-     */
+    public function isAdministradora(): bool
+    {
+        return $this->hasRole('administradora') || $this->perfil === 'administradora';
+    }
+
+    public function isGerente(): bool
+    {
+        return $this->hasRole('gerente') || $this->perfil === 'gerente';
+    }
+
     public function isZelador(): bool
     {
-        return $this->perfil === 'zelador';
+        return $this->hasRole('zelador') || $this->perfil === 'zelador';
     }
 
     /**
-     * Scope para filtrar por empresa
+     * Scope para filtrar por administradora
      */
-    public function scopeDaEmpresa($query, $empresaId)
+    public function scopeDaAdministradora($query, $id)
     {
-        return $query->where('empresa_id', $empresaId);
+        return $query->where('administradora_id', $id);
     }
 }

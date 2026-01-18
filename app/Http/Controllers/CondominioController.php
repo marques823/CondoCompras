@@ -4,8 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Condominio;
 use App\Models\LinkCondominio;
+use App\Models\User;
+use App\Models\Zelador;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class CondominioController extends Controller
 {
@@ -14,21 +20,24 @@ class CondominioController extends Controller
      */
     public function index()
     {
-        $condominios = Condominio::daEmpresa(Auth::user()->empresa_id)
-            ->with('tags')
+        $this->authorize('viewAny', Condominio::class);
+        
+        $condominios = Condominio::with(['tags', 'gerente'])
             ->orderBy('nome')
             ->paginate(15);
 
         return view('condominios.index', compact('condominios'));
     }
 
+
     /**
      * Show the form for creating a new resource.
      */
     public function create()
     {
-        $tags = \App\Models\Tag::daEmpresa(Auth::user()->empresa_id)
-            ->porTipo('condominio')
+        $this->authorize('create', Condominio::class);
+
+        $tags = \App\Models\Tag::porTipo('condominio')
             ->ativas()
             ->orderBy('ordem')
             ->orderBy('nome')
@@ -42,6 +51,8 @@ class CondominioController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Condominio::class);
+
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
             'cnpj' => 'nullable|string|max:18',
@@ -57,26 +68,21 @@ class CondominioController extends Controller
             'sindico_email' => 'nullable|email|max:255',
             'observacoes' => 'nullable|string',
             'tags' => 'nullable|array',
-            'tags.*' => [
-                'exists:tags,id',
-                function ($attribute, $value, $fail) {
-                    $tag = \App\Models\Tag::find($value);
-                    if ($tag && $tag->empresa_id !== Auth::user()->empresa_id) {
-                        $fail('A tag selecionada não pertence à sua empresa.');
-                    }
-                },
-            ],
+            'tags.*' => 'exists:tags,id',
             // Campos do zelador (opcionais)
             'zelador_nome' => 'nullable|string|max:255',
             'zelador_telefone' => 'nullable|string|max:20|unique:users,telefone',
             'zelador_password' => 'nullable|string|min:8|confirmed',
-        ], [
-            'zelador_telefone.unique' => 'Este telefone já está cadastrado no sistema.',
-            'zelador_password.confirmed' => 'A confirmação da senha não confere.',
-            'zelador_password.min' => 'A senha deve ter no mínimo 8 caracteres.',
         ]);
 
-        $validated['empresa_id'] = Auth::user()->empresa_id;
+        $user = Auth::user();
+        $validated['administradora_id'] = $user->administradora_id;
+        
+        // Se quem está criando for um Gerente, ele é o gerente responsável
+        if ($user->isGerente()) {
+            $validated['gerente_id'] = $user->id;
+        }
+
         $validated['ativo'] = true;
 
         $tags = $validated['tags'] ?? [];
@@ -91,19 +97,33 @@ class CondominioController extends Controller
 
         // Cria usuário zelador se os campos foram preenchidos
         if ($request->filled('zelador_nome') && $request->filled('zelador_telefone') && $request->filled('zelador_password')) {
-            \App\Models\User::create([
+            $zeladorUser = User::create([
                 'name' => $validated['zelador_nome'],
                 'telefone' => $validated['zelador_telefone'],
-                'email' => null, // Zeladores não usam email
-                'password' => \Illuminate\Support\Facades\Hash::make($validated['zelador_password']),
-                'empresa_id' => Auth::user()->empresa_id,
+                'email' => null,
+                'password' => Hash::make($validated['zelador_password']),
+                'administradora_id' => $user->administradora_id,
                 'condominio_id' => $condominio->id,
                 'perfil' => 'zelador',
+            ]);
+
+            // Atribui a role de zelador
+            $zeladorRole = Role::where('name', 'zelador')->first();
+            if ($zeladorRole) {
+                $zeladorUser->roles()->attach($zeladorRole);
+            }
+
+            // Cria o registro na tabela zeladores
+            Zelador::create([
+                'user_id' => $zeladorUser->id,
+                'condominio_id' => $condominio->id,
+                'administradora_id' => $user->administradora_id,
+                'ativo' => true,
             ]);
         }
 
         return redirect()->route('condominios.index')
-            ->with('success', 'Condomínio cadastrado com sucesso!' . ($request->filled('zelador_nome') ? ' Usuário zelador criado com sucesso!' : ''));
+            ->with('success', 'Condomínio cadastrado com sucesso!');
     }
 
     /**
@@ -111,9 +131,10 @@ class CondominioController extends Controller
      */
     public function show($id)
     {
-        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
-            ->with(['demandas', 'documentos', 'tags', 'links'])
+        $condominio = Condominio::with(['demandas', 'documentos', 'tags', 'links', 'gerente'])
             ->findOrFail($id);
+
+        $this->authorize('view', $condominio);
 
         return view('condominios.show', compact('condominio'));
     }
@@ -123,11 +144,11 @@ class CondominioController extends Controller
      */
     public function edit($id)
     {
-        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
-            ->findOrFail($id);
+        $condominio = Condominio::findOrFail($id);
+        
+        $this->authorize('update', $condominio);
 
-        $tags = \App\Models\Tag::daEmpresa(Auth::user()->empresa_id)
-            ->porTipo('condominio')
+        $tags = \App\Models\Tag::porTipo('condominio')
             ->ativas()
             ->orderBy('ordem')
             ->orderBy('nome')
@@ -143,13 +164,9 @@ class CondominioController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
-            ->findOrFail($id);
-
-        // Verifica se já existe zelador para este condomínio
-        $zeladorExistente = \App\Models\User::where('condominio_id', $condominio->id)
-            ->where('perfil', 'zelador')
-            ->first();
+        $condominio = Condominio::findOrFail($id);
+        
+        $this->authorize('update', $condominio);
 
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
@@ -167,100 +184,14 @@ class CondominioController extends Controller
             'observacoes' => 'nullable|string',
             'ativo' => 'boolean',
             'tags' => 'nullable|array',
-            'tags.*' => [
-                'exists:tags,id',
-                function ($attribute, $value, $fail) {
-                    $tag = \App\Models\Tag::find($value);
-                    if ($tag && $tag->empresa_id !== Auth::user()->empresa_id) {
-                        $fail('A tag selecionada não pertence à sua empresa.');
-                    }
-                },
-            ],
-            // Campos do zelador (opcionais)
-            'zelador_nome' => 'nullable|string|max:255',
-            'zelador_telefone' => [
-                'nullable',
-                'string',
-                'max:20',
-                function ($attribute, $value, $fail) use ($zeladorExistente) {
-                    if ($value && $zeladorExistente && $zeladorExistente->telefone !== $value) {
-                        // Se está editando e mudou o telefone, verifica se o novo telefone já existe
-                        if (\App\Models\User::where('telefone', $value)->where('id', '!=', $zeladorExistente->id)->exists()) {
-                            $fail('Este telefone já está cadastrado no sistema.');
-                        }
-                    } elseif ($value && !$zeladorExistente) {
-                        // Se está criando novo, verifica se o telefone já existe
-                        if (\App\Models\User::where('telefone', $value)->exists()) {
-                            $fail('Este telefone já está cadastrado no sistema.');
-                        }
-                    }
-                },
-            ],
-            'zelador_password' => [
-                'nullable',
-                'string',
-                'min:8',
-                function ($attribute, $value, $fail) use ($request, $zeladorExistente) {
-                    // Se está criando novo zelador, senha é obrigatória
-                    if (!$zeladorExistente && $request->filled('zelador_nome') && $request->filled('zelador_telefone') && !$request->filled('zelador_password')) {
-                        $fail('A senha é obrigatória ao criar um novo zelador.');
-                    }
-                    // Se preencheu senha, confirmação é obrigatória
-                    if ($request->filled('zelador_password') && !$request->filled('zelador_password_confirmation')) {
-                        $fail('A confirmação da senha é obrigatória.');
-                    }
-                    // Verifica se senha e confirmação conferem
-                    if ($request->filled('zelador_password') && $request->input('zelador_password') !== $request->input('zelador_password_confirmation')) {
-                        $fail('A confirmação da senha não confere.');
-                    }
-                },
-            ],
-        ], [
-            'zelador_password.confirmed' => 'A confirmação da senha não confere.',
-            'zelador_password.min' => 'A senha deve ter no mínimo 8 caracteres.',
+            'tags.*' => 'exists:tags,id',
         ]);
 
         $tags = $validated['tags'] ?? [];
         unset($validated['tags']);
 
         $condominio->update($validated);
-
-        // Atualiza tags
         $condominio->tags()->sync($tags);
-
-        // Gerencia usuário zelador
-        $zeladorExistente = \App\Models\User::where('condominio_id', $condominio->id)
-            ->where('perfil', 'zelador')
-            ->first();
-
-        if ($request->filled('zelador_nome') && $request->filled('zelador_telefone')) {
-            if ($zeladorExistente) {
-                // Atualiza zelador existente
-                $updateData = [
-                    'name' => $validated['zelador_nome'],
-                    'telefone' => $validated['zelador_telefone'],
-                ];
-                
-                if ($request->filled('zelador_password')) {
-                    $updateData['password'] = \Illuminate\Support\Facades\Hash::make($validated['zelador_password']);
-                }
-                
-                $zeladorExistente->update($updateData);
-            } else {
-                // Cria novo zelador (senha é obrigatória)
-                if ($request->filled('zelador_password')) {
-                    \App\Models\User::create([
-                        'name' => $validated['zelador_nome'],
-                        'telefone' => $validated['zelador_telefone'],
-                        'email' => null, // Zeladores não usam email
-                        'password' => \Illuminate\Support\Facades\Hash::make($validated['zelador_password']),
-                        'empresa_id' => Auth::user()->empresa_id,
-                        'condominio_id' => $condominio->id,
-                        'perfil' => 'zelador',
-                    ]);
-                }
-            }
-        }
 
         return redirect()->route('condominios.index')
             ->with('success', 'Condomínio atualizado com sucesso!');
@@ -271,8 +202,9 @@ class CondominioController extends Controller
      */
     public function destroy($id)
     {
-        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
-            ->findOrFail($id);
+        $condominio = Condominio::findOrFail($id);
+        
+        $this->authorize('delete', $condominio);
 
         $condominio->delete();
 
@@ -280,65 +212,34 @@ class CondominioController extends Controller
             ->with('success', 'Condomínio removido com sucesso!');
     }
 
-    /**
-     * Gera um link único para o condomínio criar demandas
-     */
     public function gerarLink(Request $request, $id)
     {
-        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
-            ->findOrFail($id);
+        $condominio = Condominio::findOrFail($id);
+        $this->authorize('update', $condominio);
 
         $validated = $request->validate([
-            'titulo' => 'nullable|string|max:255',
-            'expira_em' => 'nullable|date|after:today',
+            'titulo' => 'required|string|max:255',
         ]);
 
-        $token = LinkCondominio::gerarToken();
-
-        $link = LinkCondominio::create([
+        LinkCondominio::create([
             'condominio_id' => $condominio->id,
-            'empresa_id' => Auth::user()->empresa_id,
-            'token' => $token,
-            'titulo' => $validated['titulo'] ?? "Link para {$condominio->nome}",
+            'administradora_id' => $condominio->administradora_id,
+            'token' => LinkCondominio::gerarToken(),
+            'titulo' => $validated['titulo'],
             'ativo' => true,
-            'expira_em' => $validated['expira_em'] ?? null,
         ]);
 
-        $urlCompleta = route('publico.criar-demanda', ['token' => $token]);
-
-        return redirect()->route('condominios.show', $condominio)
-            ->with('success', 'Link gerado com sucesso!')
-            ->with('link_gerado', $urlCompleta);
+        return redirect()->back()->with('success', 'Link gerado com sucesso!');
     }
 
-    /**
-     * Lista todos os links do condomínio
-     */
-    public function links($id)
+    public function desativarLink($condominioId, $linkId)
     {
-        $condominio = Condominio::daEmpresa(Auth::user()->empresa_id)
-            ->findOrFail($id);
+        $condominio = Condominio::findOrFail($condominioId);
+        $this->authorize('update', $condominio);
 
-        $links = LinkCondominio::where('condominio_id', $condominio->id)
-            ->where('empresa_id', Auth::user()->empresa_id)
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
-
-        return view('condominios.links', compact('condominio', 'links'));
-    }
-
-    /**
-     * Desativa um link
-     */
-    public function desativarLink(Request $request, $condominioId, $linkId)
-    {
-        $link = LinkCondominio::where('condominio_id', $condominioId)
-            ->where('empresa_id', Auth::user()->empresa_id)
-            ->findOrFail($linkId);
-
+        $link = LinkCondominio::where('condominio_id', $condominio->id)->findOrFail($linkId);
         $link->update(['ativo' => false]);
 
-        return redirect()->back()
-            ->with('success', 'Link desativado com sucesso!');
+        return redirect()->back()->with('success', 'Link desativado!');
     }
 }
