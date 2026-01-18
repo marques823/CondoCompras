@@ -21,13 +21,8 @@ class CondominioPublicoController extends Controller
         }
 
         $condominio = $link->condominio;
-        
-        // Carrega categorias de serviços
-        $categorias = CategoriaServico::ativas()
-            ->orderBy('nome')
-            ->get();
 
-        return view('publico.criar-demanda', compact('link', 'condominio', 'categorias'));
+        return view('publico.criar-demanda', compact('link', 'condominio'));
     }
 
     /**
@@ -56,12 +51,36 @@ class CondominioPublicoController extends Controller
             'email_solicitante' => 'nullable|email|max:255',
         ]);
 
+        // Busca um zelador do condomínio para associar a demanda
+        // Se não houver zelador, usa o gerente do condomínio
+        $usuarioId = null;
+        $zelador = \App\Models\Zelador::where('condominio_id', $condominio->id)
+            ->where('ativo', true)
+            ->first();
+        
+        if ($zelador) {
+            $usuarioId = $zelador->user_id;
+        } elseif ($condominio->gerente_id) {
+            $usuarioId = $condominio->gerente_id;
+        }
+
+        // Se ainda não tiver usuário, busca qualquer gerente da administradora
+        if (!$usuarioId) {
+            $gerente = \App\Models\User::where('administradora_id', $link->administradora_id)
+                ->whereHas('roles', fn($q) => $q->where('name', 'gerente'))
+                ->first();
+            
+            if ($gerente) {
+                $usuarioId = $gerente->id;
+            }
+        }
+
         // Cria a demanda vinculada ao condomínio e empresa do link
         $demanda = \App\Models\Demanda::create([
             'administradora_id' => $link->administradora_id,
             'condominio_id' => $condominio->id,
             'categoria_servico_id' => $validated['categoria_servico_id'] ?? null,
-            'usuario_id' => null, // Demanda pública não tem usuário específico
+            'usuario_id' => $usuarioId, // Associa a um zelador ou gerente do condomínio
             'titulo' => $validated['titulo'],
             'descricao' => $validated['descricao'],
             'prazo_limite' => $validated['prazo_limite'] ?? null,

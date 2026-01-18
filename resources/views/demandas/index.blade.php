@@ -169,13 +169,38 @@
                                                 {{ $demanda->condominio->nome }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                @if($demanda->usuario)
+                                                @php
+                                                    // Verifica se foi criada via link público (observações contêm "Solicitante:")
+                                                    $isPublico = $demanda->observacoes && str_contains($demanda->observacoes, 'Solicitante:');
+                                                    $nomeSolicitante = null;
+                                                    if ($isPublico) {
+                                                        // Extrai o nome do solicitante das observações
+                                                        $linhas = explode("\n", $demanda->observacoes);
+                                                        foreach ($linhas as $linha) {
+                                                            if (str_starts_with(trim($linha), 'Solicitante:')) {
+                                                                $nomeSolicitante = trim(str_replace('Solicitante:', '', $linha));
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                @endphp
+                                                
+                                                @if($isPublico && $nomeSolicitante && $nomeSolicitante !== 'Não informado')
+                                                    <div>
+                                                        <span class="font-medium">{{ $nomeSolicitante }}</span>
+                                                        <span class="text-xs text-green-600">(Link Público)</span>
+                                                    </div>
+                                                @elseif($demanda->usuario)
                                                     <div>
                                                         <span class="font-medium">{{ $demanda->usuario->name }}</span>
                                                         @if($demanda->usuario->isZelador())
                                                             <span class="text-xs text-blue-600">(Zelador)</span>
+                                                        @elseif($demanda->usuario->isGerente())
+                                                            <span class="text-xs text-indigo-600">(Gerente)</span>
                                                         @endif
                                                     </div>
+                                                @elseif($isPublico)
+                                                    <span class="text-xs text-green-600">Link Público</span>
                                                 @else
                                                     <span class="text-gray-400">-</span>
                                                 @endif
