@@ -28,6 +28,13 @@ class CheckContext
                 return redirect()->route('login')->withErrors(['context' => 'Usuário sem administradora vinculada.']);
             }
             
+            // Verifica se a administradora está ativa
+            $administradora = $user->administradora;
+            if ($administradora && !$administradora->ativo) {
+                Auth::logout();
+                return redirect()->route('login')->withErrors(['context' => 'A administradora vinculada ao seu usuário está desativada. Entre em contato com o suporte.']);
+            }
+            
             // Se for Zelador, ele deve ter um condominio_id vinculado (regra de negócio)
             if ($user->isZelador() && !$user->condominio_id) {
                 // Podemos deixar passar mas restringir via Policy

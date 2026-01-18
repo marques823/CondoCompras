@@ -40,6 +40,7 @@ Route::middleware(['auth', 'verified', 'context'])->group(function () {
     // --- ÁREA ADMIN (SUPER ADMIN) ---
     Route::middleware(['role:admin'])->group(function () {
         Route::resource('administradoras', AdministradoraController::class);
+        Route::get('administradoras/{administradora}/confirm-destroy', [AdministradoraController::class, 'confirmDestroy'])->name('administradoras.confirm-destroy');
     });
 
     // --- ÁREA ADMINISTRADORA / GERENTE (COMPARTILHADA) ---

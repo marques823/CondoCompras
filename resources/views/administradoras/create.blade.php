@@ -109,6 +109,54 @@
                             </div>
                         </div>
 
+                        <!-- Separador -->
+                        <div class="border-t border-gray-200 dark:border-gray-700 my-8">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mt-6 mb-4">
+                                Usuário de Acesso
+                            </h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                Crie o usuário que terá acesso como Administradora desta empresa
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Nome do Usuário -->
+                            <div>
+                                <x-input-label for="usuario_name" :value="__('Nome do Usuário')" />
+                                <x-text-input id="usuario_name" class="block mt-1 w-full" type="text" name="usuario_name" :value="old('usuario_name')" required />
+                                <x-input-error :messages="$errors->get('usuario_name')" class="mt-2" />
+                            </div>
+
+                            <!-- E-mail do Usuário -->
+                            <div>
+                                <x-input-label for="usuario_email" :value="__('E-mail do Usuário')" />
+                                <x-text-input id="usuario_email" class="block mt-1 w-full" type="email" name="usuario_email" :value="old('usuario_email')" required />
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Será usado para login no sistema</p>
+                                <x-input-error :messages="$errors->get('usuario_email')" class="mt-2" />
+                            </div>
+
+                            <!-- Telefone do Usuário -->
+                            <div>
+                                <x-input-label for="usuario_telefone" :value="__('Telefone do Usuário')" />
+                                <x-text-input id="usuario_telefone" class="block mt-1 w-full" type="tel" name="usuario_telefone" :value="old('usuario_telefone')" placeholder="(00) 00000-0000" />
+                                <x-input-error :messages="$errors->get('usuario_telefone')" class="mt-2" />
+                            </div>
+
+                            <!-- Senha -->
+                            <div>
+                                <x-input-label for="usuario_password" :value="__('Senha')" />
+                                <x-text-input id="usuario_password" class="block mt-1 w-full" type="password" name="usuario_password" required autocomplete="new-password" />
+                                <x-input-error :messages="$errors->get('usuario_password')" class="mt-2" />
+                            </div>
+
+                            <!-- Confirmar Senha -->
+                            <div>
+                                <x-input-label for="usuario_password_confirmation" :value="__('Confirmar Senha')" />
+                                <x-text-input id="usuario_password_confirmation" class="block mt-1 w-full" type="password" name="usuario_password_confirmation" required autocomplete="new-password" />
+                                <x-input-error :messages="$errors->get('usuario_password_confirmation')" class="mt-2" />
+                            </div>
+                        </div>
+
                         <div class="flex items-center justify-end mt-6">
                             <a href="{{ route('administradoras.index') }}" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mr-4">
                                 Cancelar

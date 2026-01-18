@@ -35,8 +35,7 @@
                             <!-- E-mail -->
                             <div id="email-field">
                                 <x-input-label for="email" :value="__('E-mail')" />
-                                <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" />
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Obrigatório para todos os perfis exceto Zelador</p>
+                                <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required />
                                 <x-input-error :messages="$errors->get('email')" class="mt-2" />
                             </div>
 
@@ -44,7 +43,6 @@
                             <div id="telefone-field">
                                 <x-input-label for="telefone" :value="__('Telefone')" />
                                 <x-text-input id="telefone" class="block mt-1 w-full" type="tel" name="telefone" :value="old('telefone')" placeholder="(00) 00000-0000" />
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Obrigatório para Zelador</p>
                                 <x-input-error :messages="$errors->get('telefone')" class="mt-2" />
                             </div>
 
@@ -69,7 +67,8 @@
                             </div>
                             @endif
 
-                            <!-- Condomínio -->
+                            <!-- Condomínio (oculto para Super Admin) -->
+                            @if(!Auth::user()->isAdmin())
                             <div id="condominio-field">
                                 <x-input-label for="condominio_id" :value="__('Condomínio')" />
                                 <select id="condominio_id" name="condominio_id" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">
@@ -81,6 +80,7 @@
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Obrigatório apenas para Zelador</p>
                                 <x-input-error :messages="$errors->get('condominio_id')" class="mt-2" />
                             </div>
+                            @endif
 
                             <!-- Senha -->
                             <div>
@@ -250,7 +250,8 @@
         });
         @endif
 
-        // Mostrar/ocultar campos baseado no perfil selecionado
+        // Mostrar/ocultar campos baseado no perfil selecionado (apenas para não-admin)
+        @if(!Auth::user()->isAdmin())
         document.getElementById('perfil').addEventListener('change', function() {
             const perfil = this.value;
             const emailField = document.getElementById('email-field');
@@ -274,7 +275,9 @@
                 condominioField.style.display = 'block';
                 emailInput.setAttribute('required', 'required');
                 telefoneInput.removeAttribute('required');
-                document.getElementById('condominio_id').removeAttribute('required');
+                if (document.getElementById('condominio_id')) {
+                    document.getElementById('condominio_id').removeAttribute('required');
+                }
             }
         });
 
@@ -282,5 +285,6 @@
         if (document.getElementById('perfil').value) {
             document.getElementById('perfil').dispatchEvent(new Event('change'));
         }
+        @endif
     </script>
 </x-app-layout>

@@ -91,6 +91,11 @@ class UserController extends Controller
             'condominio_id' => 'nullable|exists:condominios,id',
         ]);
 
+        // Validação: Admin só pode criar Admin ou Administradora
+        if ($user->isAdmin() && !in_array($validated['perfil'], ['admin', 'administradora'])) {
+            return back()->withErrors(['perfil' => 'Super Admin só pode criar usuários do tipo Admin ou Administradora.'])->withInput();
+        }
+
         // Validação: Administradora só pode criar Gerentes
         if ($user->isAdministradora() && $validated['perfil'] !== 'gerente') {
             return back()->withErrors(['perfil' => 'Administradoras só podem criar usuários do tipo Gerente.'])->withInput();

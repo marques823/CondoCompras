@@ -8,6 +8,9 @@
                 <a href="{{ route('administradoras.edit', $empresa->id) }}" class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded mr-2">
                     Editar
                 </a>
+                <a href="{{ route('administradoras.confirm-destroy', $empresa->id) }}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mr-2">
+                    Excluir
+                </a>
                 <a href="{{ route('administradoras.index') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
                     Voltar
                 </a>

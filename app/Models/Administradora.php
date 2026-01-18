@@ -20,6 +20,8 @@ class Administradora extends Model
         'email',
         'telefone',
         'endereco',
+        'numero',
+        'complemento',
         'bairro',
         'cidade',
         'estado',

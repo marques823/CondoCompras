@@ -18,6 +18,7 @@
                             <div>
                                 <x-input-label for="cnpj" :value="__('CNPJ')" />
                                 <x-text-input id="cnpj" class="block mt-1 w-full" type="text" name="cnpj" :value="old('cnpj', $empresa->cnpj)" placeholder="00.000.000/0000-00" maxlength="18" />
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Digite o CNPJ para preenchimento automático</p>
                                 <x-input-error :messages="$errors->get('cnpj')" class="mt-2" />
                             </div>
 
@@ -54,6 +55,20 @@
                                 <x-input-label for="endereco" :value="__('Endereço')" />
                                 <x-text-input id="endereco" class="block mt-1 w-full" type="text" name="endereco" :value="old('endereco', $empresa->endereco)" />
                                 <x-input-error :messages="$errors->get('endereco')" class="mt-2" />
+                            </div>
+
+                            <!-- Número -->
+                            <div>
+                                <x-input-label for="numero" :value="__('Número')" />
+                                <x-text-input id="numero" class="block mt-1 w-full" type="text" name="numero" :value="old('numero', $empresa->numero ?? '')" />
+                                <x-input-error :messages="$errors->get('numero')" class="mt-2" />
+                            </div>
+
+                            <!-- Complemento -->
+                            <div>
+                                <x-input-label for="complemento" :value="__('Complemento')" />
+                                <x-text-input id="complemento" class="block mt-1 w-full" type="text" name="complemento" :value="old('complemento', $empresa->complemento ?? '')" />
+                                <x-input-error :messages="$errors->get('complemento')" class="mt-2" />
                             </div>
 
                             <!-- Bairro -->
@@ -108,4 +123,119 @@
             </div>
         </div>
     </div>
+
+    <script src="{{ asset('js/cnpj-cpf-autocomplete.js') }}"></script>
+    <script>
+        // Preencher empresa com dados do CNPJ
+        function preencherAdministradora(data) {
+            // Nome fantasia
+            if (data.nome) {
+                document.getElementById('nome').value = data.nome;
+            }
+            
+            // Razão social
+            if (data.razao_social) {
+                document.getElementById('razao_social').value = data.razao_social;
+            }
+            
+            // Endereço
+            if (data.logradouro) {
+                document.getElementById('endereco').value = data.logradouro;
+            }
+            
+            // Número
+            if (data.numero) {
+                const numeroField = document.getElementById('numero');
+                if (numeroField) {
+                    numeroField.value = data.numero;
+                }
+            }
+            
+            // Complemento
+            if (data.complemento) {
+                const complementoField = document.getElementById('complemento');
+                if (complementoField) {
+                    complementoField.value = data.complemento;
+                }
+            }
+            
+            // Bairro
+            if (data.bairro) {
+                document.getElementById('bairro').value = data.bairro;
+            }
+            
+            // Cidade
+            if (data.municipio) {
+                document.getElementById('cidade').value = data.municipio;
+            }
+            
+            // Estado
+            if (data.uf) {
+                document.getElementById('estado').value = data.uf;
+            }
+            
+            // CEP
+            if (data.cep) {
+                const cep = data.cep.replace(/\D/g, '');
+                document.getElementById('cep').value = cep.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+            }
+            
+            // Telefone
+            if (data.telefone) {
+                document.getElementById('telefone').value = data.telefone;
+            }
+            
+            // Email
+            if (data.email) {
+                document.getElementById('email').value = data.email;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const cnpjInput = document.getElementById('cnpj');
+            
+            if (cnpjInput) {
+                // Aplicar máscara
+                cnpjInput.addEventListener('input', function(e) {
+                    e.target.value = formatarCNPJ(e.target.value);
+                });
+                
+                // Buscar dados quando o CNPJ estiver completo
+                cnpjInput.addEventListener('blur', async function(e) {
+                    const cnpj = limparDocumento(e.target.value);
+                    
+                    if (cnpj.length === 14) {
+                        const loading = document.createElement('div');
+                        loading.id = 'cnpj-loading';
+                        loading.className = 'text-blue-500 text-sm mt-1';
+                        loading.textContent = 'Buscando dados...';
+                        cnpjInput.parentElement.appendChild(loading);
+                        
+                        const data = await buscarCNPJ(cnpj);
+                        
+                        const loadingEl = document.getElementById('cnpj-loading');
+                        if (loadingEl) {
+                            loadingEl.remove();
+                        }
+                        
+                        if (data) {
+                            preencherAdministradora(data);
+                            
+                            const success = document.createElement('div');
+                            success.className = 'text-green-500 text-sm mt-1';
+                            success.textContent = '✓ Dados preenchidos automaticamente';
+                            cnpjInput.parentElement.appendChild(success);
+                            setTimeout(() => success.remove(), 3000);
+                        } else {
+                            const error = document.createElement('div');
+                            error.className = 'text-red-500 text-sm mt-1';
+                            error.textContent = 'CNPJ não encontrado ou inválido';
+                            cnpjInput.parentElement.appendChild(error);
+                            setTimeout(() => error.remove(), 3000);
+                        }
+                    }
+                });
+            }
+        });
+    </script>
 </x-app-layout>
