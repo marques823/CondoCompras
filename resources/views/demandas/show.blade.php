@@ -64,12 +64,40 @@
                         <div>
                             <h3 class="text-lg font-semibold mb-2">Criado em</h3>
                             <p>{{ $demanda->created_at->format('d/m/Y H:i') }}</p>
-                            @if($demanda->usuario)
+                            @php
+                                // Verifica se foi criada via link público (observações contêm "Solicitante:")
+                                $isPublico = $demanda->observacoes && str_contains($demanda->observacoes, 'Solicitante:');
+                                if ($isPublico) {
+                                    // Extrai o nome do solicitante das observações
+                                    $linhas = explode("\n", $demanda->observacoes);
+                                    $nomeSolicitante = null;
+                                    foreach ($linhas as $linha) {
+                                        if (str_starts_with(trim($linha), 'Solicitante:')) {
+                                            $nomeSolicitante = trim(str_replace('Solicitante:', '', $linha));
+                                            break;
+                                        }
+                                    }
+                                }
+                            @endphp
+                            
+                            @if($isPublico && $nomeSolicitante && $nomeSolicitante !== 'Não informado')
+                                <p class="text-sm text-gray-500 mt-1">
+                                    por <span class="font-medium">{{ $nomeSolicitante }}</span>
+                                    <span class="text-xs text-green-600">(Link Público)</span>
+                                </p>
+                            @elseif($demanda->usuario)
                                 <p class="text-sm text-gray-500 mt-1">
                                     por <span class="font-medium">{{ $demanda->usuario->name }}</span>
                                     @if($demanda->usuario->isZelador())
                                         <span class="text-xs text-blue-600">(Zelador)</span>
+                                    @elseif($demanda->usuario->isGerente())
+                                        <span class="text-xs text-indigo-600">(Gerente)</span>
                                     @endif
+                                </p>
+                            @elseif($isPublico)
+                                <p class="text-sm text-gray-500 mt-1">
+                                    <span class="font-medium">Link Público</span>
+                                    <span class="text-xs text-green-600">(Solicitante não informado)</span>
                                 </p>
                             @endif
                         </div>
