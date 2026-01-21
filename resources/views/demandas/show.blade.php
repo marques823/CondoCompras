@@ -18,6 +18,9 @@
                             <button type="button" onclick="abrirModalStatus()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
                                 Alterar Status
                             </button>
+                            <button type="button" onclick="abrirModalCompartilhar()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                                📤 Compartilhar
+                            </button>
                         </div>
                     </div>
 
@@ -317,9 +320,12 @@
                                                     <span class="text-gray-400">-</span>
                                                 @endif
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium cursor-pointer" onclick="return confirm('Tem certeza?') && this.nextElementSibling.submit()">
-                                                Remover
-                                                <form method="POST" action="{{ route('demandas.remover-prestador', [$demanda, $prestador]) }}" class="hidden">@csrf @method('DELETE')</form>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <form method="POST" action="{{ route('demandas.remover-prestador', [$demanda, $prestador]) }}" onsubmit="return confirm('Tem certeza que deseja remover este prestador?')" class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-red-600 hover:text-red-900 font-medium">Remover</button>
+                                                </form>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -357,9 +363,9 @@
                                                     $temOrcamentoAprovado = $demanda->orcamentos->where('status', 'aprovado')->isNotEmpty();
                                                 @endphp
                                                 @if($orcamento->status === 'recebido' && !$temOrcamentoAprovado)
-                                                    <button onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ $orcamento->prestador->nome_razao_social }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
-                                                    <button onclick="abrirModalRejeitarOrcamento({{ $orcamento->id }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-red-600 hover:text-red-900">Rejeitar</button>
-                                                    <button onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ $orcamento->prestador->nome_razao_social }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
+                                                    <button onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ addslashes($orcamento->prestador->nome_razao_social) }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
+                                                    <button onclick="abrirModalRejeitarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ addslashes($orcamento->prestador->nome_razao_social) }}')" class="text-red-600 hover:text-red-900">Rejeitar</button>
+                                                    <button onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ addslashes($orcamento->prestador->nome_razao_social) }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
                                                 @elseif($orcamento->status === 'recebido' && $temOrcamentoAprovado)
                                                     <span class="text-gray-400 text-xs">Outro orçamento já foi aprovado</span>
                                                 @endif
@@ -446,6 +452,71 @@
         </div>
     </div>
 
+    <!-- Modal Rejeitar Orçamento -->
+    <div id="modal-rejeitar-orcamento" class="hidden fixed inset-0 z-50 modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:max-w-md w-full p-6">
+                <h3 class="text-lg font-medium mb-4 text-red-600">Rejeitar Orçamento</h3>
+                <form id="form-rejeitar-orcamento" method="POST">
+                    @csrf
+                    <input type="hidden" id="orcamento_id_rejeitar">
+                    <p class="text-sm mb-2"><strong>Prestador:</strong> <span id="orcamento_prestador_rejeitar"></span></p>
+                    <p class="text-sm mb-4 font-bold">Valor: <span id="orcamento_valor_rejeitar"></span></p>
+                    <div class="mb-4">
+                        <label for="motivo_rejeicao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Motivo da Rejeição <span class="text-red-500">*</span>
+                        </label>
+                        <textarea id="motivo_rejeicao" name="motivo_rejeicao" required rows="4" placeholder="Informe o motivo da rejeição..." class="w-full rounded-md border-gray-300 dark:bg-gray-900"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="fecharModalRejeitarOrcamento()" class="px-4 py-2 border rounded-md">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md">Confirmar Rejeição</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Negociar Orçamento -->
+    <div id="modal-negociar-orcamento" class="hidden fixed inset-0 z-50 modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:max-w-lg w-full p-6">
+                <h3 class="text-lg font-medium mb-4 text-blue-600">Solicitar Negociação</h3>
+                <form id="form-negociar-orcamento" method="POST">
+                    @csrf
+                    <input type="hidden" id="orcamento_id_negociar">
+                    <p class="text-sm mb-2"><strong>Prestador:</strong> <span id="orcamento_prestador_negociar"></span></p>
+                    <p class="text-sm mb-4 font-bold">Valor Original: <span id="orcamento_valor_negociar"></span></p>
+                    
+                    <div class="mb-4">
+                        <label for="tipo_negociacao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Tipo de Negociação <span class="text-red-500">*</span>
+                        </label>
+                        <select id="tipo_negociacao" name="tipo" required class="w-full rounded-md border-gray-300 dark:bg-gray-900">
+                            <option value="">Selecione...</option>
+                            <option value="desconto">Solicitar Desconto</option>
+                            <option value="parcelamento">Parcelamento</option>
+                            <option value="contraproposta">Contraproposta de Valor</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="descricao_negociacao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Descrição da Solicitação <span class="text-red-500">*</span>
+                        </label>
+                        <textarea id="descricao_negociacao" name="descricao" required rows="4" placeholder="Descreva o que você está solicitando ao prestador..." class="w-full rounded-md border-gray-300 dark:bg-gray-900"></textarea>
+                        <p class="text-xs text-gray-500 mt-1">O prestador receberá esta solicitação e poderá responder com os valores e condições.</p>
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="fecharModalNegociarOrcamento()" class="px-4 py-2 border rounded-md">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md">Enviar Solicitação</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         function abrirModalStatus() { 
             document.getElementById('modal-status').classList.remove('hidden');
@@ -470,6 +541,33 @@
             document.getElementById('modal-aprovar-orcamento').classList.remove('hidden');
             document.getElementById('form-aprovar-orcamento').action = '/demandas/{{ $demanda->id }}/orcamentos/' + id + '/aprovar';
         }
+
+        function fecharModalRejeitarOrcamento() { 
+            document.getElementById('modal-rejeitar-orcamento').classList.add('hidden');
+            document.getElementById('form-rejeitar-orcamento').reset();
+        }
+        function abrirModalRejeitarOrcamento(id, val, nom) {
+            document.getElementById('orcamento_id_rejeitar').value = id;
+            document.getElementById('orcamento_prestador_rejeitar').textContent = nom;
+            document.getElementById('orcamento_valor_rejeitar').textContent = 'R$ ' + val;
+            document.getElementById('modal-rejeitar-orcamento').classList.remove('hidden');
+            document.getElementById('form-rejeitar-orcamento').action = '/demandas/{{ $demanda->id }}/orcamentos/' + id + '/rejeitar';
+        }
+
+        function fecharModalNegociarOrcamento() { 
+            document.getElementById('modal-negociar-orcamento').classList.add('hidden');
+            document.getElementById('form-negociar-orcamento').reset();
+            document.getElementById('campo_valor_negociacao').classList.add('hidden');
+        }
+        function abrirModalNegociacao(id, val, nom) {
+            document.getElementById('orcamento_id_negociar').value = id;
+            document.getElementById('orcamento_prestador_negociar').textContent = nom;
+            document.getElementById('orcamento_valor_negociar').textContent = 'R$ ' + parseFloat(val).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('modal-negociar-orcamento').classList.remove('hidden');
+            document.getElementById('form-negociar-orcamento').action = '/demandas/{{ $demanda->id }}/orcamentos/' + id + '/negociar';
+            document.getElementById('campo_valor_negociacao').classList.add('hidden');
+        }
+
 
         // Copiar e Compartilhar Links
         document.addEventListener('DOMContentLoaded', function() {
@@ -567,12 +665,240 @@
             });
         });
 
+        // Modal de Compartilhamento
+        function abrirModalCompartilhar() {
+            const modal = document.getElementById('modal-compartilhar');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function copiarLinkEspecifico(token, tokenAcesso) {
+            const linkUrl = '{{ url("/") }}/publico/demanda-prestador/' + token + '/login';
+            navigator.clipboard.writeText(linkUrl).then(() => {
+                alert('Link copiado! Token: ' + tokenAcesso);
+            });
+        }
+
+        function compartilharWhatsAppEspecifico(token, tokenAcesso) {
+            const linkUrl = '{{ url("/") }}/publico/demanda-prestador/' + token + '/login';
+            const text = 'Olá! Você foi convidado para enviar um orçamento.\n\nLink: ' + linkUrl + '\nToken de acesso: ' + tokenAcesso;
+            window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+        }
+
+        function fecharModalCompartilhar() {
+            const modal = document.getElementById('modal-compartilhar');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function copiarLinkPublico() {
+            const input = document.getElementById('link-publico-url');
+            input.select();
+            document.execCommand('copy');
+            alert('Link copiado para a área de transferência!');
+        }
+
+        function compartilharWhatsApp() {
+            const linkUrl = document.getElementById('link-publico-url').value;
+            const text = 'Olá! Você foi convidado para enviar um orçamento para esta demanda. Acesse: ' + linkUrl;
+            window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+        }
+
+        function compartilharEmail() {
+            const linkUrl = document.getElementById('link-publico-url').value;
+            const subject = 'Convite para Orçamento - {{ $demanda->titulo }}';
+            const body = 'Olá!\n\nVocê foi convidado para enviar um orçamento para esta demanda.\n\nAcesse o link: ' + linkUrl;
+            window.location.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+        }
+
         window.onclick = e => {
             if (e.target.classList.contains('modal-overlay')) {
                 fecharModalStatus(); 
                 fecharModalAdicionarPrestador(); 
                 fecharModalAprovarOrcamento();
+                fecharModalCompartilhar();
             }
         }
     </script>
+
+    <!-- Modal de Compartilhamento -->
+    <div id="modal-compartilhar" class="hidden fixed inset-0 z-50 overflow-y-auto modal-overlay" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
+                        Compartilhar Demanda com Prestadores
+                    </h3>
+                    
+                    <!-- Lista de Links Ativos -->
+                    @if($demanda->linksPublicos->where('ativo', true)->count() > 0)
+                        <div class="mb-4">
+                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                Links Ativos ({{ $demanda->linksPublicos->where('ativo', true)->count() }})
+                            </h4>
+                            <div class="space-y-3 max-h-96 overflow-y-auto">
+                                @foreach($demanda->linksPublicos->where('ativo', true) as $link)
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div class="flex-1">
+                                                <p class="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">
+                                                    @if($link->nome_prestador)
+                                                        {{ $link->nome_prestador }}
+                                                    @else
+                                                        Prestador
+                                                    @endif
+                                                </p>
+                                                <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                                    CPF/CNPJ: 
+                                                    @if($link->cpf_cnpj_autorizado)
+                                                        @php
+                                                            $doc = preg_replace('/\D/', '', $link->cpf_cnpj_autorizado);
+                                                            if(strlen($doc) == 11) {
+                                                                $formatado = preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $doc);
+                                                            } else {
+                                                                $formatado = preg_replace('/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/', '$1.$2.$3/$4-$5', $doc);
+                                                            }
+                                                        @endphp
+                                                        {{ $formatado }}
+                                                    @else
+                                                        Não informado
+                                                    @endif
+                                                </p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-500 mb-2">
+                                                    Acessos: {{ $link->acessos }} | Criado em: {{ $link->created_at->format('d/m/Y H:i') }}
+                                                </p>
+                                            </div>
+                                            <form method="POST" action="{{ route('demandas.desativar-link', [$demanda, $link->id]) }}" class="inline">
+                                                @csrf
+                                                <button type="submit" 
+                                                        onclick="return confirm('Tem certeza que deseja desativar este link?')"
+                                                        class="text-xs text-red-600 hover:text-red-800">
+                                                    Desativar
+                                                </button>
+                                            </form>
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Link:
+                                            </label>
+                                            <div class="flex gap-2">
+                                                <input type="text" 
+                                                       value="{{ route('publico.demanda.login', $link->token) }}" 
+                                                       readonly 
+                                                       class="flex-1 text-xs rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100">
+                                                <button type="button" 
+                                                        onclick="copiarLinkEspecifico('{{ $link->token }}', '{{ $link->token_acesso }}')" 
+                                                        class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-md">
+                                                    Copiar
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        @if($link->token_acesso)
+                                            <div class="mb-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                                                <p class="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">🔑 Token de Acesso:</p>
+                                                <p class="text-lg font-bold text-yellow-900 dark:text-yellow-100 tracking-widest">{{ $link->token_acesso }}</p>
+                                            </div>
+                                        @endif
+                                        
+                                        <div class="flex gap-2">
+                                            <button type="button" 
+                                                    onclick="compartilharWhatsAppEspecifico('{{ $link->token }}', '{{ $link->token_acesso }}')" 
+                                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-2 px-3 rounded-md">
+                                                📱 WhatsApp
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="mb-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                            Gerar Novo Link
+                        </h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            Gere um novo link público seguro para compartilhar esta demanda com prestadores. 
+                            O prestador precisará informar CPF/CNPJ e token de acesso para acessar.
+                        </p>
+                        <form method="POST" action="{{ route('demandas.gerar-link', $demanda) }}">
+                            @csrf
+                            
+                            @if($errors->any())
+                                <div class="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
+                                    <ul class="list-disc list-inside">
+                                        @foreach($errors->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                            
+                            <div class="mb-4">
+                                <label for="nome_prestador" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Nome do Prestador <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" 
+                                       id="nome_prestador" 
+                                       name="nome_prestador" 
+                                       required
+                                       placeholder="Nome ou Razão Social do prestador"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100 @error('nome_prestador') border-red-500 @enderror"
+                                       value="{{ old('nome_prestador') }}">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Nome completo ou razão social do prestador que receberá o link.
+                                </p>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="cpf_cnpj" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    CPF/CNPJ do Prestador <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" 
+                                       id="cpf_cnpj" 
+                                       name="cpf_cnpj" 
+                                       required
+                                       placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100 @error('cpf_cnpj') border-red-500 @enderror"
+                                       value="{{ old('cpf_cnpj') }}">
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Apenas este CPF/CNPJ poderá acessar o link com o token de acesso gerado.
+                                </p>
+                            </div>
+                            
+                            <button type="submit" 
+                                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md">
+                                Gerar Link Público Seguro
+                            </button>
+                        </form>
+                    </div>
+
+                    @if($demanda->linksPublicos->where('ativo', false)->count() > 0)
+                        <div class="mt-4">
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Links Desativados:</p>
+                            @foreach($demanda->linksPublicos->where('ativo', false) as $link)
+                                <div class="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 rounded mb-2">
+                                    <span class="text-xs text-gray-600 dark:text-gray-400">
+                                        {{ route('publico.demanda.show', $link->token) }}
+                                    </span>
+                                    <span class="text-xs text-red-600">Desativado</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" 
+                            onclick="fecharModalCompartilhar()" 
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gray-600 text-base font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </x-app-layout>

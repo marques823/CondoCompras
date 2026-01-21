@@ -10,6 +10,7 @@ use App\Http\Controllers\DocumentoController;
 use App\Http\Controllers\LinkPrestadorController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\CondominioPublicoController;
+use App\Http\Controllers\DemandaPublicaController;
 use App\Http\Controllers\PrestadorPublicoController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\GerenteController;
@@ -68,6 +69,8 @@ Route::middleware(['auth', 'verified', 'context'])->group(function () {
         Route::post('demandas/{demanda}/orcamentos/{orcamento}/negociar', [DemandaController::class, 'criarNegociacao'])->name('demandas.criar-negociacao');
         Route::post('demandas/{demanda}/prestadores', [DemandaController::class, 'adicionarPrestador'])->name('demandas.adicionar-prestador');
         Route::delete('demandas/{demanda}/prestadores/{prestador}', [DemandaController::class, 'removerPrestador'])->name('demandas.remover-prestador');
+        Route::post('demandas/{demanda}/gerar-link', [DemandaController::class, 'gerarLink'])->name('demandas.gerar-link');
+        Route::post('demandas/{demanda}/links/{link}/desativar', [DemandaController::class, 'desativarLink'])->name('demandas.desativar-link');
         
         Route::resource('orcamentos', OrcamentoController::class);
         Route::resource('documentos', DocumentoController::class);
@@ -92,8 +95,18 @@ Route::get('/logout', function () {
 })->middleware('auth')->name('logout.get');
 
 // Rotas públicas
+// Rotas de login para links de prestadores
+Route::get('/prestador/{token}/login', [LinkPrestadorController::class, 'login'])->name('prestador.link.login');
+Route::post('/prestador/{token}/login', [LinkPrestadorController::class, 'processarLogin'])->name('prestador.link.login.processar');
 Route::get('/prestador/{token}', [LinkPrestadorController::class, 'show'])->name('prestador.link.show');
 Route::post('/prestador/{token}/orcamento', [LinkPrestadorController::class, 'enviarOrcamento'])->name('prestador.link.orcamento');
+
+// Rotas de login para links públicos de demanda
+Route::get('/publico/demanda-prestador/{token}/login', [DemandaPublicaController::class, 'login'])->name('publico.demanda.login');
+Route::post('/publico/demanda-prestador/{token}/login', [DemandaPublicaController::class, 'processarLogin'])->name('publico.demanda.login.processar');
+Route::get('/publico/demanda-prestador/{token}', [DemandaPublicaController::class, 'show'])->name('publico.demanda.show');
+Route::post('/publico/demanda-prestador/{token}/orcamento', [DemandaPublicaController::class, 'enviarOrcamento'])->name('publico.demanda.orcamento');
+
 Route::get('/publico/demanda/{token}', [CondominioPublicoController::class, 'criarDemanda'])->name('publico.criar-demanda');
 Route::post('/publico/demanda/{token}', [CondominioPublicoController::class, 'storeDemanda'])->name('publico.store-demanda');
 Route::get('/api/buscar-cnpj', [ApiController::class, 'buscarCNPJ'])->name('api.buscar-cnpj');

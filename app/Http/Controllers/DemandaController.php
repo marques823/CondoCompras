@@ -9,6 +9,8 @@ use App\Models\DemandaAnexo;
 use App\Models\Orcamento;
 use App\Models\Negociacao;
 use App\Models\Tag;
+use App\Models\LinkDemandaPublico;
+use App\Helpers\ValidacaoHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -129,7 +131,7 @@ class DemandaController extends Controller
     {
         $this->authorize('view', $demanda);
 
-        $demanda->load(['condominio', 'usuario', 'prestadores', 'orcamentos.negociacoes', 'links', 'negociacoes', 'anexos']);
+        $demanda->load(['condominio', 'usuario', 'prestadores', 'orcamentos.negociacoes', 'links', 'linksPublicos', 'negociacoes', 'anexos']);
 
         $prestadoresIds = $demanda->prestadores->pluck('id')->toArray();
         $prestadoresDisponiveis = Prestador::ativos()
@@ -296,7 +298,7 @@ class DemandaController extends Controller
         $orcamento = Orcamento::where('demanda_id', $demanda->id)->findOrFail($orcamento);
 
         $validated = $request->validate([
-            'tipo' => 'required|in:desconto,parcelamento,prazo,contraproposta',
+            'tipo' => 'required|in:desconto,parcelamento,contraproposta',
             'valor_solicitado' => 'nullable|numeric|min:0',
             'descricao' => 'required|string',
         ]);
@@ -314,5 +316,76 @@ class DemandaController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Solicitação de negociação enviada!');
+    }
+
+    /**
+     * Gera um link público para compartilhar a demanda
+     */
+    public function gerarLink(Request $request, Demanda $demanda)
+    {
+        $this->authorize('view', $demanda);
+
+        // Valida CPF/CNPJ e nome do prestador
+        $validated = $request->validate([
+            'cpf_cnpj' => 'required|string|max:18',
+            'nome_prestador' => 'required|string|max:255',
+        ]);
+
+        $cpfCnpjLimpo = preg_replace('/\D/', '', $validated['cpf_cnpj']);
+        if (strlen($cpfCnpjLimpo) != 11 && strlen($cpfCnpjLimpo) != 14) {
+            return redirect()->back()
+                ->withErrors(['cpf_cnpj' => 'CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos.'])
+                ->withInput();
+        }
+
+        // Valida CPF/CNPJ usando helper
+        if (!\App\Helpers\ValidacaoHelper::validarCPFouCNPJ($validated['cpf_cnpj'])) {
+            return redirect()->back()
+                ->withErrors(['cpf_cnpj' => 'CPF ou CNPJ inválido.'])
+                ->withInput();
+        }
+
+        // Verifica se já existe um link ativo para este CPF/CNPJ
+        $linkExistente = LinkDemandaPublico::where('demanda_id', $demanda->id)
+            ->where('cpf_cnpj_autorizado', $cpfCnpjLimpo)
+            ->where('ativo', true)
+            ->first();
+
+        if ($linkExistente) {
+            return redirect()->back()
+                ->with('info', 'Já existe um link ativo para este CPF/CNPJ. Token: ' . $linkExistente->token_acesso);
+        }
+
+        // Cria novo link com autenticação (expira em 30 dias por padrão)
+        $link = LinkDemandaPublico::create([
+            'demanda_id' => $demanda->id,
+            'administradora_id' => $demanda->administradora_id,
+            'token' => LinkDemandaPublico::gerarToken(),
+            'token_acesso' => LinkDemandaPublico::gerarTokenAcesso(),
+            'cpf_cnpj_autorizado' => $cpfCnpjLimpo,
+            'nome_prestador' => $validated['nome_prestador'],
+            'token_gerado_em' => now(),
+            'ativo' => true,
+            'expira_em' => now()->addDays(30),
+        ]);
+
+        $mensagem = 'Link público gerado com sucesso! Token de acesso: ' . $link->token_acesso;
+
+        return redirect()->back()->with('success', $mensagem);
+    }
+
+    /**
+     * Desativa um link público da demanda
+     */
+    public function desativarLink(Demanda $demanda, $linkId)
+    {
+        $this->authorize('view', $demanda);
+
+        $link = LinkDemandaPublico::where('demanda_id', $demanda->id)
+            ->findOrFail($linkId);
+        
+        $link->update(['ativo' => false]);
+
+        return redirect()->back()->with('success', 'Link desativado com sucesso!');
     }
 }

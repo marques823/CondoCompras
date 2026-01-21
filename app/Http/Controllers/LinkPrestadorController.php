@@ -7,6 +7,7 @@ use App\Models\Demanda;
 use App\Models\Prestador;
 use App\Models\Orcamento;
 use App\Models\Negociacao;
+use App\Helpers\ValidacaoHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -14,15 +15,78 @@ use Illuminate\Support\Str;
 class LinkPrestadorController extends Controller
 {
     /**
+     * Exibe a página de login para acesso ao link
+     */
+    public function login(string $token)
+    {
+        $link = LinkPrestador::where('token', $token)->firstOrFail();
+
+        // Verifica se o link está válido
+        if (!$link->isValido()) {
+            return view('publico.link-inativo', ['link' => $link]);
+        }
+
+        // Se já está autenticado, redireciona para a demanda
+        if ($link->isAutenticado()) {
+            return redirect()->route('prestador.link.show', $token);
+        }
+
+        return view('publico.login-link', compact('link'));
+    }
+
+    /**
+     * Processa o login do link
+     */
+    public function processarLogin(Request $request, string $token)
+    {
+        $link = LinkPrestador::where('token', $token)->firstOrFail();
+
+        // Verifica se o link está válido
+        if (!$link->isValido()) {
+            return view('publico.link-inativo', ['link' => $link]);
+        }
+
+        $validated = $request->validate([
+            'cpf_cnpj' => 'required|string|max:18',
+            'token_acesso' => 'required|string|size:5',
+        ]);
+
+        // Valida CPF/CNPJ
+        if (!ValidacaoHelper::validarCPFouCNPJ($validated['cpf_cnpj'])) {
+            return redirect()->back()
+                ->withErrors(['cpf_cnpj' => 'CPF ou CNPJ inválido.'])
+                ->withInput();
+        }
+
+        // Tenta autenticar
+        if (!$link->autenticar($validated['cpf_cnpj'], $validated['token_acesso'])) {
+            return redirect()->back()
+                ->withErrors(['error' => 'CPF/CNPJ ou token de acesso inválido.'])
+                ->withInput();
+        }
+
+        return redirect()->route('prestador.link.show', $token)
+            ->with('success', 'Autenticação realizada com sucesso!');
+    }
+
+    /**
      * Exibe a página do prestador através do link único
      */
     public function show(string $token)
     {
         $link = LinkPrestador::where('token', $token)->firstOrFail();
 
-        // Verifica se o link está expirado
-        if ($link->expira_em && $link->expira_em->isPast()) {
-            abort(404, 'Link expirado.');
+        // Verifica se o link está expirado ou usado
+        if (!$link->isValido()) {
+            return view('publico.link-inativo', ['link' => $link]);
+        }
+
+        // Verifica se precisa de autenticação e se está autenticado
+        // Se o link tem token_acesso, exige autenticação
+        if ($link->token_acesso) {
+            if (!$link->isAutenticado()) {
+                return redirect()->route('prestador.link.login', $token);
+            }
         }
 
         // Incrementa acesso
@@ -74,6 +138,20 @@ class LinkPrestadorController extends Controller
     {
         $link = LinkPrestador::where('token', $token)->firstOrFail();
 
+        // Verifica se o link está válido
+        if (!$link->isValido()) {
+            return view('publico.link-inativo', ['link' => $link]);
+        }
+
+        // Verifica se precisa de autenticação e se está autenticado
+        // Se o link tem token_acesso, exige autenticação
+        if ($link->token_acesso) {
+            if (!$link->isAutenticado()) {
+                return redirect()->route('prestador.link.login', $token)
+                    ->withErrors(['error' => 'É necessário fazer login para enviar orçamento.']);
+            }
+        }
+
         // Verifica se já enviou orçamento
         $jaEnviouOrcamento = Orcamento::where('demanda_id', $link->demanda_id)
             ->where('prestador_id', $link->prestador_id)
@@ -82,12 +160,6 @@ class LinkPrestadorController extends Controller
         if ($jaEnviouOrcamento) {
             return redirect()->route('prestador.link.show', $token)
                 ->withErrors(['error' => 'Você já enviou um orçamento para esta demanda. Não é possível enviar novamente.']);
-        }
-
-        // Verifica se o link está expirado
-        if ($link->expira_em && $link->expira_em->isPast()) {
-            return redirect()->route('prestador.link.show', $token)
-                ->withErrors(['error' => 'Link expirado.']);
         }
 
         $request->validate([
@@ -167,11 +239,17 @@ class LinkPrestadorController extends Controller
                 continue;
             }
 
-            // Cria novo link
+            // Busca o prestador para obter CPF/CNPJ
+            $prestador = Prestador::find($prestadorId);
+            
+            // Cria novo link com autenticação
             $link = LinkPrestador::create([
                 'demanda_id' => $demanda->id,
                 'prestador_id' => $prestadorId,
                 'token' => LinkPrestador::gerarToken(),
+                'token_acesso' => LinkPrestador::gerarTokenAcesso(),
+                'cpf_cnpj_autorizado' => $prestador->cpf_cnpj ?? null,
+                'token_gerado_em' => now(),
                 'expira_em' => now()->addDays(30), // Expira em 30 dias
                 'usado' => false,
                 'acessos' => 0,

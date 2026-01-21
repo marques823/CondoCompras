@@ -5,31 +5,32 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
+use App\Traits\BelongsToAdministradora;
 
-class LinkPrestador extends Model
+class LinkDemandaPublico extends Model
 {
-    protected $table = 'links_prestador';
+    use BelongsToAdministradora;
+    
+    protected $table = 'links_demanda_publico';
 
     protected $fillable = [
         'demanda_id',
-        'prestador_id',
+        'administradora_id',
         'token',
         'token_acesso',
         'cpf_cnpj_autorizado',
+        'nome_prestador',
         'token_gerado_em',
         'autenticado_em',
         'sessao_id',
-        'expira_em',
-        'usado',
-        'usado_em',
+        'ativo',
         'acessos',
+        'expira_em',
     ];
 
     protected $casts = [
+        'ativo' => 'boolean',
         'expira_em' => 'datetime',
-        'usado' => 'boolean',
-        'usado_em' => 'datetime',
         'token_gerado_em' => 'datetime',
         'autenticado_em' => 'datetime',
     ];
@@ -43,11 +44,11 @@ class LinkPrestador extends Model
     }
 
     /**
-     * Relacionamento com Prestador
+     * Relacionamento com Administradora
      */
-    public function prestador(): BelongsTo
+    public function administradora(): BelongsTo
     {
-        return $this->belongsTo(Prestador::class);
+        return $this->belongsTo(Administradora::class, 'administradora_id');
     }
 
     /**
@@ -135,7 +136,7 @@ class LinkPrestador extends Model
      */
     public function isValido(): bool
     {
-        if ($this->usado) {
+        if (!$this->ativo) {
             return false;
         }
 
@@ -144,18 +145,6 @@ class LinkPrestador extends Model
         }
 
         return true;
-    }
-
-    /**
-     * Marca o link como usado
-     */
-    public function marcarComoUsado(): void
-    {
-        $this->update([
-            'usado' => true,
-            'usado_em' => now(),
-            'acessos' => $this->acessos + 1,
-        ]);
     }
 
     /**
@@ -171,8 +160,8 @@ class LinkPrestador extends Model
      */
     public function scopeValidos($query)
     {
-        return $query->where('usado', false)
-            ->where(function ($q) {
+        return $query->where('ativo', true)
+            ->where(function($q) {
                 $q->whereNull('expira_em')
                   ->orWhere('expira_em', '>', now());
             });
