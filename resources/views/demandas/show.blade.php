@@ -378,6 +378,115 @@
                         </div>
                     </div>
                     @endif
+
+                    <!-- Orçamentos Concluídos -->
+                    @php
+                        $orcamentosConcluidos = $demanda->orcamentos->where('concluido', true);
+                    @endphp
+                    @if($orcamentosConcluidos->count() > 0)
+                    <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
+                        <h3 class="text-lg font-semibold mb-4">Serviços Concluídos</h3>
+                        <div class="space-y-6">
+                            @foreach($orcamentosConcluidos as $orcamento)
+                                <div class="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-700 rounded-lg p-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h4 class="text-lg font-bold text-purple-900 dark:text-purple-100">
+                                                ✅ {{ $orcamento->prestador->nome_razao_social }}
+                                            </h4>
+                                            <p class="text-sm text-purple-700 dark:text-purple-300">
+                                                Concluído em: {{ $orcamento->concluido_em->format('d/m/Y H:i') }}
+                                            </p>
+                                        </div>
+                                        <span class="px-3 py-1 text-sm font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100">
+                                            Concluído
+                                        </span>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor do Orçamento</label>
+                                            <p class="text-lg font-bold text-gray-900 dark:text-gray-100">R$ {{ number_format($orcamento->valor, 2, ',', '.') }}</p>
+                                        </div>
+                                        @if($orcamento->concluidoPor)
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Concluído por</label>
+                                                <p class="text-gray-900 dark:text-gray-100">{{ $orcamento->concluidoPor->nome_razao_social }}</p>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    @if($orcamento->observacoes_conclusao)
+                                        <div class="mb-4">
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observações</label>
+                                            <p class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{{ $orcamento->observacoes_conclusao }}</p>
+                                        </div>
+                                    @endif
+
+                                    @if($orcamento->dados_bancarios)
+                                        <div class="mb-4 bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">💰 Dados Bancários</label>
+                                            <p class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{{ $orcamento->dados_bancarios }}</p>
+                                        </div>
+                                    @endif
+
+                                    @php
+                                        $notaFiscal = $orcamento->documentos->where('tipo', 'nota_fiscal')->first();
+                                        $boleto = $orcamento->documentos->where('tipo', 'boleto')->first();
+                                    @endphp
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        @if($notaFiscal)
+                                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">📄 Nota Fiscal</label>
+                                                <div class="flex items-center gap-2">
+                                                    <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ $notaFiscal->nome_original }}</span>
+                                                </div>
+                                                <div class="mt-2 flex gap-2">
+                                                    <a href="{{ route('documentos.download', $notaFiscal) }}" 
+                                                       class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                        📥 Download
+                                                    </a>
+                                                    <a href="{{ route('documentos.visualizar', $notaFiscal) }}" 
+                                                       target="_blank"
+                                                       class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                        👁️ Visualizar
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        @if($boleto)
+                                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">🧾 Boleto/Comprovante</label>
+                                                <div class="flex items-center gap-2">
+                                                    <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ $boleto->nome_original }}</span>
+                                                </div>
+                                                <div class="mt-2 flex gap-2">
+                                                    <a href="{{ route('documentos.download', $boleto) }}" 
+                                                       class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                        📥 Download
+                                                    </a>
+                                                    <a href="{{ route('documentos.visualizar', $boleto) }}" 
+                                                       target="_blank"
+                                                       class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                        👁️ Visualizar
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>

@@ -131,7 +131,19 @@ class DemandaController extends Controller
     {
         $this->authorize('view', $demanda);
 
-        $demanda->load(['condominio', 'usuario', 'prestadores', 'orcamentos.negociacoes', 'links', 'linksPublicos', 'negociacoes', 'anexos']);
+        $demanda->load([
+            'condominio', 
+            'usuario', 
+            'prestadores', 
+            'orcamentos.negociacoes', 
+            'orcamentos.prestador',
+            'orcamentos.concluidoPor',
+            'orcamentos.documentos',
+            'links', 
+            'linksPublicos', 
+            'negociacoes', 
+            'anexos'
+        ]);
 
         $prestadoresIds = $demanda->prestadores->pluck('id')->toArray();
         $prestadoresDisponiveis = Prestador::ativos()
@@ -306,12 +318,12 @@ class DemandaController extends Controller
         Negociacao::create([
             'demanda_id' => $demanda->id,
             'orcamento_id' => $orcamento->id,
-            'administradora_id' => $demanda->administradora_id,
-            'usuario_id' => Auth::id(),
             'prestador_id' => $orcamento->prestador_id,
             'tipo' => $validated['tipo'],
-            'valor_solicitado' => $validated['valor_solicitado'],
-            'descricao' => $validated['descricao'],
+            'valor_original' => $orcamento->valor,
+            'valor_solicitado' => $validated['valor_solicitado'] ?? null,
+            'mensagem_solicitacao' => $validated['descricao'],
+            'criado_por' => Auth::id(),
             'status' => 'pendente',
         ]);
 

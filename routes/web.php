@@ -106,6 +106,9 @@ Route::get('/publico/demanda-prestador/{token}/login', [DemandaPublicaController
 Route::post('/publico/demanda-prestador/{token}/login', [DemandaPublicaController::class, 'processarLogin'])->name('publico.demanda.login.processar');
 Route::get('/publico/demanda-prestador/{token}', [DemandaPublicaController::class, 'show'])->name('publico.demanda.show');
 Route::post('/publico/demanda-prestador/{token}/orcamento', [DemandaPublicaController::class, 'enviarOrcamento'])->name('publico.demanda.orcamento');
+Route::post('/publico/demanda-prestador/{token}/negociacao/{negociacao}/aceitar', [DemandaPublicaController::class, 'aceitarNegociacao'])->name('publico.demanda.negociacao.aceitar');
+Route::post('/publico/demanda-prestador/{token}/negociacao/{negociacao}/recusar', [DemandaPublicaController::class, 'recusarNegociacao'])->name('publico.demanda.negociacao.recusar');
+Route::post('/publico/demanda-prestador/{token}/concluir-servico', [DemandaPublicaController::class, 'concluirServico'])->name('publico.demanda.concluir-servico');
 
 Route::get('/publico/demanda/{token}', [CondominioPublicoController::class, 'criarDemanda'])->name('publico.criar-demanda');
 Route::post('/publico/demanda/{token}', [CondominioPublicoController::class, 'storeDemanda'])->name('publico.store-demanda');

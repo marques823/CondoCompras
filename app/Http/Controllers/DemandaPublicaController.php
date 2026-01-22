@@ -6,6 +6,7 @@ use App\Models\LinkDemandaPublico;
 use App\Models\Demanda;
 use App\Models\Orcamento;
 use App\Models\Prestador;
+use App\Models\Negociacao;
 use App\Helpers\ValidacaoHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -105,6 +106,7 @@ class DemandaPublicaController extends Controller
         // Verifica se já existe orçamento enviado por este prestador (usando CPF/CNPJ do link)
         $jaEnviouOrcamento = false;
         $orcamentoEnviado = null;
+        $negociacoes = collect();
         
         if ($link->cpf_cnpj_autorizado) {
             $prestador = \App\Models\Prestador::where('cpf_cnpj', $link->cpf_cnpj_autorizado)
@@ -114,13 +116,21 @@ class DemandaPublicaController extends Controller
             if ($prestador) {
                 $orcamentoEnviado = \App\Models\Orcamento::where('demanda_id', $demanda->id)
                     ->where('prestador_id', $prestador->id)
+                    ->with(['negociacoes' => function($query) {
+                        $query->orderBy('created_at', 'desc');
+                    }])
                     ->first();
                 
                 $jaEnviouOrcamento = $orcamentoEnviado !== null;
+                
+                // Carrega negociações do orçamento
+                if ($orcamentoEnviado && $orcamentoEnviado->negociacoes) {
+                    $negociacoes = $orcamentoEnviado->negociacoes;
+                }
             }
         }
 
-        return view('publico.demanda-prestador', compact('link', 'demanda', 'zelador', 'jaEnviouOrcamento', 'orcamentoEnviado'));
+        return view('publico.demanda-prestador', compact('link', 'demanda', 'zelador', 'jaEnviouOrcamento', 'orcamentoEnviado', 'negociacoes'));
     }
 
     /**
@@ -246,5 +256,248 @@ class DemandaPublicaController extends Controller
 
         return redirect()->route('publico.demanda.show', $token)
             ->with('success', 'Orçamento enviado com sucesso! Nossa equipe entrará em contato em breve.');
+    }
+
+    /**
+     * Prestador aceita uma negociação
+     */
+    public function aceitarNegociacao(Request $request, string $token, Negociacao $negociacao)
+    {
+        $link = LinkDemandaPublico::where('token', $token)->firstOrFail();
+
+        // Verifica se o link está válido
+        if (!$link->isValido()) {
+            return view('publico.link-inativo', compact('link'));
+        }
+
+        // Verifica se precisa de autenticação e se está autenticado
+        if ($link->token_acesso) {
+            if (!$link->isAutenticado()) {
+                return redirect()->route('publico.demanda.login', $token);
+            }
+        }
+
+        // Busca o prestador pelo CPF/CNPJ do link
+        $prestador = null;
+        if ($link->cpf_cnpj_autorizado) {
+            $prestador = Prestador::where('cpf_cnpj', $link->cpf_cnpj_autorizado)
+                ->where('administradora_id', $link->demanda->administradora_id)
+                ->first();
+        }
+
+        // Verifica se a negociação pertence ao prestador do link
+        if (!$prestador || $negociacao->prestador_id !== $prestador->id || $negociacao->demanda_id !== $link->demanda_id) {
+            abort(403, 'Negociação não pertence a este prestador.');
+        }
+
+        // Verifica se a negociação está pendente
+        if ($negociacao->status !== 'pendente') {
+            return redirect()->route('publico.demanda.show', $token)
+                ->withErrors(['error' => 'Esta negociação já foi respondida.']);
+        }
+
+        // Validação baseada no tipo de negociação
+        $rules = [
+            'mensagem_resposta' => 'nullable|string|max:1000',
+        ];
+        
+        if ($negociacao->tipo === 'desconto') {
+            $rules['valor_solicitado'] = 'required|numeric|min:0.01|max:' . $negociacao->valor_original;
+            $rules['porcentagem_desconto'] = 'nullable|numeric|min:0|max:100';
+        } elseif ($negociacao->tipo === 'parcelamento') {
+            $rules['parcelas'] = 'required|integer|min:2|max:12';
+        }
+        
+        $validated = $request->validate($rules);
+
+        // Para desconto, atualiza o valor com desconto escolhido pelo prestador
+        if ($negociacao->tipo === 'desconto' && isset($validated['valor_solicitado'])) {
+            // Se foi informada porcentagem, calcula o valor baseado nela
+            if (isset($validated['porcentagem_desconto']) && $validated['porcentagem_desconto'] > 0) {
+                $valorComDesconto = $negociacao->valor_original * (1 - $validated['porcentagem_desconto'] / 100);
+                $validated['valor_solicitado'] = round($valorComDesconto, 2);
+            }
+            
+            $negociacao->update([
+                'valor_solicitado' => $validated['valor_solicitado'],
+            ]);
+        }
+        
+        // Para parcelamento, atualiza o número de parcelas
+        if ($negociacao->tipo === 'parcelamento' && isset($validated['parcelas'])) {
+            $negociacao->update([
+                'parcelas' => $validated['parcelas'],
+            ]);
+        }
+        
+        // Para contraproposta, o valor já foi definido pela administradora, não precisa atualizar
+
+        $negociacao->aceitar($validated['mensagem_resposta'] ?? null);
+
+        return redirect()->route('publico.demanda.show', $token)
+            ->with('success', 'Negociação aceita com sucesso!');
+    }
+
+    /**
+     * Prestador recusa uma negociação
+     */
+    public function recusarNegociacao(Request $request, string $token, Negociacao $negociacao)
+    {
+        $link = LinkDemandaPublico::where('token', $token)->firstOrFail();
+
+        // Verifica se o link está válido
+        if (!$link->isValido()) {
+            return view('publico.link-inativo', compact('link'));
+        }
+
+        // Verifica se precisa de autenticação e se está autenticado
+        if ($link->token_acesso) {
+            if (!$link->isAutenticado()) {
+                return redirect()->route('publico.demanda.login', $token);
+            }
+        }
+
+        // Busca o prestador pelo CPF/CNPJ do link
+        $prestador = null;
+        if ($link->cpf_cnpj_autorizado) {
+            $prestador = Prestador::where('cpf_cnpj', $link->cpf_cnpj_autorizado)
+                ->where('administradora_id', $link->demanda->administradora_id)
+                ->first();
+        }
+
+        // Verifica se a negociação pertence ao prestador do link
+        if (!$prestador || $negociacao->prestador_id !== $prestador->id || $negociacao->demanda_id !== $link->demanda_id) {
+            abort(403, 'Negociação não pertence a este prestador.');
+        }
+
+        // Verifica se a negociação está pendente
+        if ($negociacao->status !== 'pendente') {
+            return redirect()->route('publico.demanda.show', $token)
+                ->withErrors(['error' => 'Esta negociação já foi respondida.']);
+        }
+
+        $validated = $request->validate([
+            'mensagem_resposta' => 'nullable|string|max:1000',
+        ]);
+
+        $negociacao->recusar($validated['mensagem_resposta'] ?? null);
+
+        return redirect()->route('publico.demanda.show', $token)
+            ->with('success', 'Negociação recusada.');
+    }
+
+    /**
+     * Processa a conclusão do serviço pelo prestador
+     */
+    public function concluirServico(Request $request, string $token)
+    {
+        $link = LinkDemandaPublico::where('token', $token)->firstOrFail();
+
+        // Verifica se o link está válido
+        if (!$link->isValido()) {
+            return view('publico.link-inativo', compact('link'));
+        }
+
+        // Verifica se precisa de autenticação e se está autenticado
+        if ($link->token_acesso) {
+            if (!$link->isAutenticado()) {
+                return redirect()->route('publico.demanda.login', $token);
+            }
+        }
+
+        $validated = $request->validate([
+            'orcamento_id' => 'required|exists:orcamentos,id',
+            'concluido' => 'required|accepted',
+            'observacoes_conclusao' => 'nullable|string|max:2000',
+            'dados_bancarios' => 'nullable|string|max:2000',
+            'nota_fiscal' => 'required|file|mimes:pdf|max:10240', // 10MB
+            'boleto' => 'required|file|mimes:pdf|max:10240', // 10MB
+        ]);
+
+        // Busca o orçamento
+        $orcamento = Orcamento::findOrFail($validated['orcamento_id']);
+
+        // Verifica se o orçamento pertence ao prestador do link
+        $prestador = null;
+        if ($link->cpf_cnpj_autorizado) {
+            $prestador = Prestador::where('cpf_cnpj', $link->cpf_cnpj_autorizado)
+                ->where('administradora_id', $orcamento->demanda->administradora_id)
+                ->first();
+        }
+
+        if (!$prestador || $orcamento->prestador_id !== $prestador->id) {
+            abort(403, 'Orçamento não pertence a este prestador.');
+        }
+
+        // Verifica se o orçamento está aprovado
+        if ($orcamento->status !== 'aprovado') {
+            return redirect()->route('publico.demanda.show', $token)
+                ->withErrors(['error' => 'Apenas orçamentos aprovados podem ser concluídos.']);
+        }
+
+        // Verifica se já foi concluído
+        if ($orcamento->concluido) {
+            return redirect()->route('publico.demanda.show', $token)
+                ->withErrors(['error' => 'Este serviço já foi marcado como concluído.']);
+        }
+
+        // Atualiza o orçamento com os dados de conclusão
+        $orcamento->update([
+            'concluido' => true,
+            'concluido_em' => now(),
+            'concluido_por' => $prestador->id,
+            'observacoes_conclusao' => $validated['observacoes_conclusao'] ?? null,
+            'dados_bancarios' => $validated['dados_bancarios'] ?? null,
+        ]);
+
+        // Atualiza o status da demanda para concluída
+        $orcamento->demanda->update([
+            'status' => 'concluida',
+        ]);
+
+        // Upload da Nota Fiscal
+        if ($request->hasFile('nota_fiscal')) {
+            $arquivo = $request->file('nota_fiscal');
+            $nomeArquivo = Str::uuid() . '.' . $arquivo->getClientOriginalExtension();
+            $caminho = $arquivo->storeAs('documentos/orcamentos', $nomeArquivo, 'public');
+
+            $orcamento->documentos()->create([
+                'administradora_id' => $orcamento->demanda->administradora_id,
+                'condominio_id' => $orcamento->demanda->condominio_id,
+                'demanda_id' => $orcamento->demanda_id,
+                'prestador_id' => $orcamento->prestador_id,
+                'orcamento_id' => $orcamento->id,
+                'tipo' => 'nota_fiscal',
+                'nome_original' => $arquivo->getClientOriginalName(),
+                'nome_arquivo' => $nomeArquivo,
+                'caminho' => $caminho,
+                'mime_type' => $arquivo->getMimeType(),
+                'tamanho' => $arquivo->getSize(),
+            ]);
+        }
+
+        // Upload do Boleto
+        if ($request->hasFile('boleto')) {
+            $arquivo = $request->file('boleto');
+            $nomeArquivo = Str::uuid() . '.' . $arquivo->getClientOriginalExtension();
+            $caminho = $arquivo->storeAs('documentos/orcamentos', $nomeArquivo, 'public');
+
+            $orcamento->documentos()->create([
+                'administradora_id' => $orcamento->demanda->administradora_id,
+                'condominio_id' => $orcamento->demanda->condominio_id,
+                'demanda_id' => $orcamento->demanda_id,
+                'prestador_id' => $orcamento->prestador_id,
+                'orcamento_id' => $orcamento->id,
+                'tipo' => 'boleto',
+                'nome_original' => $arquivo->getClientOriginalName(),
+                'nome_arquivo' => $nomeArquivo,
+                'caminho' => $caminho,
+                'mime_type' => $arquivo->getMimeType(),
+                'tamanho' => $arquivo->getSize(),
+            ]);
+        }
+
+        return redirect()->route('publico.demanda.show', $token)
+            ->with('success', 'Serviço marcado como concluído com sucesso!');
     }
 }

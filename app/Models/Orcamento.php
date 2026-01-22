@@ -23,12 +23,19 @@ class Orcamento extends Model
         'motivo_rejeicao',
         'aprovado_por',
         'aprovado_em',
+        'concluido',
+        'concluido_em',
+        'concluido_por',
+        'observacoes_conclusao',
+        'dados_bancarios',
     ];
 
     protected $casts = [
         'valor' => 'decimal:2',
         'validade' => 'date',
         'aprovado_em' => 'datetime',
+        'concluido' => 'boolean',
+        'concluido_em' => 'datetime',
     ];
 
     /**
@@ -61,6 +68,14 @@ class Orcamento extends Model
     public function aprovadoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'aprovado_por');
+    }
+
+    /**
+     * Relacionamento com Prestador que concluiu
+     */
+    public function concluidoPor(): BelongsTo
+    {
+        return $this->belongsTo(Prestador::class, 'concluido_por');
     }
 
     /**
