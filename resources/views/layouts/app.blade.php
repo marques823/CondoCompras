@@ -14,53 +14,41 @@
     </head>
 
     {{--
-        LAYOUT STRATEGY (prova de erro):
-        ─────────────────────────────────
-        • Sidebar: SEMPRE fixed. No mobile: oculto por padrão, aparece como overlay.
-          No desktop: sempre visível, largura controlada via style binding do Alpine.
-        • Conteúdo: margin-left via style binding do Alpine (0 no mobile, 256px/64px no desktop).
-          Não depende de flex, de classes Tailwind dinâmicas, nem de z-index.
+        LAYOUT ESTÁTICO (Simplicidade Máxima):
+        ──────────────────────────────────────
+        • Desktop: Menu sempre visível (256px de largura fixa).
+        • Mobile: Menu overlay toggleable via sidebarOpen.
+        • Sem localStorage, sem flickering, sem classes dinâmicas complexas.
     --}}
     <body class="font-sans antialiased bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-          x-data="{ 
-              sidebarOpen: localStorage.getItem('sidebar_state') !== null 
-                  ? localStorage.getItem('sidebar_state') === 'true' 
-                  : window.innerWidth >= 768 
-          }"
-          x-init="$watch('sidebarOpen', value => localStorage.setItem('sidebar_state', value))">
+          x-data="{ sidebarOpen: false }">
 
         {{-- ===========================
-             SIDEBAR (sempre fixed)
+             SIDEBAR (Desktop fixo / Mobile overlay)
              =========================== --}}
         <aside
             id="app-sidebar"
-            class="fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-slate-300 overflow-hidden"
-            style="transition: width 0.3s ease, transform 0.3s ease;"
-            x-bind:style="
-                window.innerWidth >= 768
-                    ? (sidebarOpen ? 'width:256px; transform:translateX(0)' : 'width:64px; transform:translateX(0)')
-                    : (sidebarOpen ? 'width:256px; transform:translateX(0)' : 'width:256px; transform:translateX(-100%)')
-            "
+            class="fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-slate-300 w-64 transition-transform duration-300 ease-in-out md:translate-x-0"
+            x-bind:class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
         >
             @include('layouts.navigation')
         </aside>
 
-        {{-- Mobile backdrop --}}
+        {{-- Mobile backdrop (só aparece se sidebarOpen for true no mobile) --}}
         <div
             class="fixed inset-0 z-30 bg-slate-900/60 md:hidden"
             x-show="sidebarOpen"
-            @click="sidebarOpen = false"
             x-cloak
+            @click="sidebarOpen = false"
         ></div>
 
         {{-- ===========================
              CONTEÚDO PRINCIPAL
              =========================== --}}
+        {{-- ml-64 no desktop para compensar o aside fixed --}}
         <div
             id="app-content"
-            class="flex flex-col min-h-screen"
-            style="transition: margin-left 0.3s ease;"
-            x-bind:style="window.innerWidth >= 768 ? (sidebarOpen ? 'margin-left:256px' : 'margin-left:64px') : 'margin-left:0'"
+            class="flex flex-col min-h-screen transition-all duration-300 md:ml-64"
         >
             @include('layouts.top-bar')
 
