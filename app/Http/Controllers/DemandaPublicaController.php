@@ -11,6 +11,9 @@ use App\Helpers\ValidacaoHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\BudgetReceivedNotification;
+use App\Models\User;
 
 class DemandaPublicaController extends Controller
 {
@@ -136,7 +139,7 @@ class DemandaPublicaController extends Controller
             }
         }
 
-        return view('publico.demanda-prestador', compact('link', 'demanda', 'zelador', 'jaEnviouOrcamento', 'orcamentoEnviado', 'negociacoes'));
+        return view('publico.demanda-prestador', compact('link', 'demanda', 'zelador', 'jaEnviouOrcamento', 'orcamentoEnviado', 'negociacoes', 'prestador'));
     }
 
     /**
@@ -270,6 +273,21 @@ class DemandaPublicaController extends Controller
         // Se a demanda estava "aberta", move para "aguardando_orcamento" automaticamente
         if ($demanda->status === 'aberta') {
             $demanda->update(['status' => 'aguardando_orcamento']);
+        }
+
+        // Notifica administradores e o zelador da administradora da demanda
+        $admins = User::where('administradora_id', $demanda->administradora_id)
+            ->whereIn('perfil', ['administrador', 'suporte'])
+            ->get();
+        
+        $zelador = User::where('condominio_id', $demanda->condominio_id)
+            ->where('perfil', 'zelador')
+            ->first();
+
+        $usersToNotify = $admins->push($zelador)->filter();
+
+        if ($usersToNotify->isNotEmpty()) {
+            Notification::send($usersToNotify, new BudgetReceivedNotification($orcamento));
         }
 
         // Recarrega os dados para exibir na view

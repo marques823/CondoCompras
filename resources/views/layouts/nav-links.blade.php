@@ -29,14 +29,11 @@
         </x-nav-link-sidebar>
     </li>
     <li>
-        <x-nav-link-sidebar :href="route('users.index')" :active="request()->routeIs('users.*')" icon="users">
-            {{ __('Gerentes') }}
-        </x-nav-link-sidebar>
-    </li>
-    <li>
-        <x-nav-link-sidebar :href="route('administradora.config')" :active="request()->routeIs('administradora.config')" icon="cog">
-            {{ __('Configurações') }}
-        </x-nav-link-sidebar>
+        <x-nav-dropdown-sidebar :label="__('Configurações')" :active="request()->routeIs('notifications.settings*')">
+            <x-nav-link-sidebar :href="route('notifications.settings')" :active="request()->routeIs('notifications.settings*')" :submenu="true">
+                {{ __('Notificações') }}
+            </x-nav-link-sidebar>
+        </x-nav-dropdown-sidebar>
     </li>
 
 @elseif($user->isGerente())
@@ -81,5 +78,12 @@
         <x-nav-link-sidebar :href="route('users.index')" :active="request()->routeIs('users.*')" icon="users">
             {{ __('Usuários Global') }}
         </x-nav-link-sidebar>
+    </li>
+    <li>
+        <x-nav-dropdown-sidebar :label="__('Configurações')" :active="request()->routeIs('notifications.settings*')">
+            <x-nav-link-sidebar :href="route('notifications.settings')" :active="request()->routeIs('notifications.settings*')" :submenu="true">
+                {{ __('Notificações') }}
+            </x-nav-link-sidebar>
+        </x-nav-dropdown-sidebar>
     </li>
 @endif

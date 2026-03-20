@@ -231,6 +231,43 @@ sudo firewall-cmd --permanent --add-port=PORTA_DESEJADA/tcp
 sudo firewall-cmd --reload
 ```
 
+### 7. Configurar Fila de Processamento (Queue Worker)
+
+Para que as notificações (WhatsApp/Email) sejam enviadas em segundo plano sem travar o sistema:
+
+1. No arquivo `.env`, certifique-se que:
+   `QUEUE_CONNECTION=database`
+
+2. Crie o arquivo de serviço `/etc/systemd/system/condocompras-worker.service`:
+   (Você pode usar o modelo `condocompras-worker.service` disponível na raiz do projeto)
+
+```ini
+[Unit]
+Description=CondoCompras Queue Worker
+After=network.target
+
+[Service]
+Type=simple
+User=seu_usuario
+WorkingDirectory=/caminho/para/condocompras
+ExecStart=/usr/bin/php artisan queue:work --tries=3 --timeout=90
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=condocompras-worker
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. Ative o serviço:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable condocompras-worker
+sudo systemctl start condocompras-worker
+```
+
 ## 📚 Documentação
 
 Consulte a [Documentação Técnica](./DOCUMENTACAO_TECNICA.md) para:

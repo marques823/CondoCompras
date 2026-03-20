@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Traits\BelongsToAdministradora;
+use Illuminate\Notifications\Notifiable;
 
 class Prestador extends Model
 {
-    use SoftDeletes, BelongsToAdministradora;
+    use SoftDeletes, BelongsToAdministradora, Notifiable;
 
     protected $table = 'prestadores';
 

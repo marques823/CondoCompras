@@ -361,9 +361,20 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                                                 @php
                                                     $temOrcamentoAprovado = $demanda->orcamentos->where('status', 'aprovado')->isNotEmpty();
-                                                    $linkWhatsApp = $demanda->linksPublicos->where('whatsapp', $orcamento->prestador->telefone)->first() 
-                                                                  ?? \App\Models\LinkPrestador::where('demanda_id', $demanda->id)->where('prestador_id', $orcamento->prestador_id)->first();
-                                                    $zapPrestador = $orcamento->prestador->telefone ?? ($linkWhatsApp ? $linkWhatsApp->whatsapp : null);
+                                                    $prestador = $orcamento->prestador;
+                                                    
+                                                    $linkWhatsApp = null;
+                                                    if ($prestador && $prestador->telefone) {
+                                                        $linkWhatsApp = $demanda->linksPublicos->where('whatsapp', $prestador->telefone)->first();
+                                                    }
+                                                    
+                                                    if (!$linkWhatsApp) {
+                                                        $linkWhatsApp = \App\Models\LinkPrestador::where('demanda_id', $demanda->id)
+                                                                      ->where('prestador_id', $orcamento->prestador_id)
+                                                                      ->first();
+                                                    }
+                                                    
+                                                    $zapPrestador = ($prestador && $prestador->telefone) ? $prestador->telefone : ($linkWhatsApp ? $linkWhatsApp->whatsapp : null);
                                                     $zapLimpo = preg_replace('/\D/', '', $zapPrestador);
                                                     $urlPublica = $linkWhatsApp ? route('publico.demanda.show', $linkWhatsApp->token) : '#';
                                                 @endphp

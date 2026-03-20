@@ -38,7 +38,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Prestador</label>
-                                <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $orcamento->prestador->nome_razao_social }}</p>
+                                <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $orcamento->prestador->nome_razao_social ?? 'N/A' }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor</label>
@@ -153,9 +153,20 @@
                     <!-- Ações -->
                     @php
                         $temOrcamentoAprovado = $orcamento->demanda->orcamentos->where('status', 'aprovado')->isNotEmpty();
-                        $linkWhatsApp = $orcamento->demanda->linksPublicos->where('whatsapp', $orcamento->prestador->telefone)->first() 
-                                      ?? \App\Models\LinkPrestador::where('demanda_id', $orcamento->demanda_id)->where('prestador_id', $orcamento->prestador_id)->first();
-                        $zapPrestador = $orcamento->prestador->telefone ?? ($linkWhatsApp ? $linkWhatsApp->whatsapp : null);
+                        $prestador = $orcamento->prestador;
+                        
+                        $linkWhatsApp = null;
+                        if ($prestador && $prestador->telefone) {
+                            $linkWhatsApp = $orcamento->demanda->linksPublicos->where('whatsapp', $prestador->telefone)->first();
+                        }
+                        
+                        if (!$linkWhatsApp) {
+                            $linkWhatsApp = \App\Models\LinkPrestador::where('demanda_id', $orcamento->demanda_id)
+                                          ->where('prestador_id', $orcamento->prestador_id)
+                                          ->first();
+                        }
+                        
+                        $zapPrestador = ($prestador && $prestador->telefone) ? $prestador->telefone : ($linkWhatsApp ? $linkWhatsApp->whatsapp : null);
                         $zapLimpo = preg_replace('/\D/', '', $zapPrestador);
                         $urlPublica = $linkWhatsApp ? route('publico.demanda.show', $linkWhatsApp->token) : '#';
                     @endphp
@@ -340,7 +351,7 @@
                         </h3>
                         <div class="mb-4">
                             <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                                <strong>Prestador:</strong> {{ $orcamento->prestador->nome_razao_social }}
+                                <strong>Prestador:</strong> {{ $orcamento->prestador->nome_razao_social ?? 'N/A' }}
                             </p>
                             <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
                                 <strong>Valor:</strong> R$ {{ number_format($orcamento->valor, 2, ',', '.') }}
@@ -376,7 +387,7 @@
                         </h3>
                         <div class="mb-4">
                             <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                                <strong>Prestador:</strong> {{ $orcamento->prestador->nome_razao_social }}
+                                <strong>Prestador:</strong> {{ $orcamento->prestador->nome_razao_social ?? 'N/A' }}
                             </p>
                             <label for="motivo_rejeicao" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Motivo da Rejeição <span class="text-red-500">*</span>
@@ -409,7 +420,7 @@
                         </h3>
                         <div class="mb-4">
                             <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                                <strong>Prestador:</strong> {{ $orcamento->prestador->nome_razao_social }}
+                                <strong>Prestador:</strong> {{ $orcamento->prestador->nome_razao_social ?? 'N/A' }}
                             </p>
                             <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
                                 <strong>Valor Original:</strong> R$ {{ number_format($orcamento->valor, 2, ',', '.') }}

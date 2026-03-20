@@ -16,6 +16,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\GerenteController;
 use App\Http\Controllers\ZeladorController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\NotificationSettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -55,9 +56,14 @@ Route::middleware(['auth', 'verified', 'context'])->group(function () {
         Route::resource('tags', TagController::class);
         Route::resource('users', UserController::class);
         
-        // Configuração específica da Administradora
         Route::get('/administradora/config', [AdministradoraController::class, 'editConfig'])->name('administradora.config');
         Route::patch('/administradora/config', [AdministradoraController::class, 'updateConfig'])->name('administradora.config.update');
+    });
+
+    // --- APENAS ADMINISTRADORA (CONFIGURAÇÕES GLOBAIS) ---
+    Route::middleware(['role:administradora'])->group(function () {
+        Route::get('/notifications/settings', [NotificationSettingController::class, 'index'])->name('notifications.settings');
+        Route::post('/notifications/settings', [NotificationSettingController::class, 'update'])->name('notifications.settings.update');
     });
 
     // --- ÁREA OPERACIONAL (ADMINISTRADORA, GERENTE, ZELADOR) ---
