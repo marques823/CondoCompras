@@ -351,7 +351,7 @@
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     @foreach($demanda->orcamentos as $orcamento)
                                         <tr>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ $orcamento->prestador->nome_razao_social }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ $orcamento->prestador->nome_razao_social ?? 'N/A' }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 font-bold">R$ {{ number_format($orcamento->valor, 2, ',', '.') }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <span class="px-2 inline-flex text-xs font-semibold rounded-full {{ $orcamento->status === 'aprovado' ? 'bg-green-100 text-green-800' : ($orcamento->status === 'rejeitado' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800') }}">
@@ -362,10 +362,10 @@
                                                 @php
                                                     $temOrcamentoAprovado = $demanda->orcamentos->where('status', 'aprovado')->isNotEmpty();
                                                 @endphp
-                                                @if($orcamento->status === 'recebido' && !$temOrcamentoAprovado)
-                                                    <button onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ addslashes($orcamento->prestador->nome_razao_social) }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
-                                                    <button onclick="abrirModalRejeitarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ addslashes($orcamento->prestador->nome_razao_social) }}')" class="text-red-600 hover:text-red-900">Rejeitar</button>
-                                                    <button onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ addslashes($orcamento->prestador->nome_razao_social) }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
+                                                @if($orcamento->status === 'recebido' && !$temOrcamentoAprovado && $orcamento->prestador)
+                                                    <button onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ addslashes($orcamento->prestador->nome_razao_social ?? 'N/A') }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
+                                                    <button onclick="abrirModalRejeitarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ addslashes($orcamento->prestador->nome_razao_social ?? 'N/A') }}')" class="text-red-600 hover:text-red-900">Rejeitar</button>
+                                                    <button onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ addslashes($orcamento->prestador->nome_razao_social ?? 'N/A') }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
                                                 @elseif($orcamento->status === 'recebido' && $temOrcamentoAprovado)
                                                     <span class="text-gray-400 text-xs">Outro orçamento já foi aprovado</span>
                                                 @endif
@@ -392,7 +392,7 @@
                                     <div class="flex items-center justify-between mb-4">
                                         <div>
                                             <h4 class="text-lg font-bold text-purple-900 dark:text-purple-100">
-                                                ✅ {{ $orcamento->prestador->nome_razao_social }}
+                                                ✅ {{ $orcamento->prestador->nome_razao_social ?? 'N/A' }}
                                             </h4>
                                             <p class="text-sm text-purple-700 dark:text-purple-300">
                                                 Concluído em: {{ $orcamento->concluido_em->format('d/m/Y H:i') }}
@@ -411,7 +411,7 @@
                                         @if($orcamento->concluidoPor)
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Concluído por</label>
-                                                <p class="text-gray-900 dark:text-gray-100">{{ $orcamento->concluidoPor->nome_razao_social }}</p>
+                                                <p class="text-gray-900 dark:text-gray-100">{{ $orcamento->concluidoPor->nome_razao_social ?? 'N/A' }}</p>
                                             </div>
                                         @endif
                                     </div>
