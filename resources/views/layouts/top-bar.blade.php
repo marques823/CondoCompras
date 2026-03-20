@@ -22,8 +22,8 @@
     {{-- Lado Direito: Perfil --}}
     <div class="flex items-center gap-3">
         <div class="hidden sm:flex flex-col items-end text-right">
-            <span class="text-sm font-semibold text-gray-700 leading-none">{{ auth()->user()->name }}</span>
-            <span class="text-xs text-gray-400 mt-1 uppercase tracking-tighter">{{ auth()->user()->getRoleNames()->first() ?? 'Usuário' }}</span>
+            <span class="text-sm font-semibold text-gray-700 leading-none">{{ auth()->user()->name ?? 'Usuário' }}</span>
+            <span class="text-xs text-gray-400 mt-1 uppercase tracking-tighter">{{ auth()->user()->perfil ?? 'Membro' }}</span>
         </div>
         
         <x-dropdown align="right" width="48">
