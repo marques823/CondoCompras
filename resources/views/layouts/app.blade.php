@@ -10,31 +10,28 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         <style>
             [x-cloak] { display: none !important; }
+            
+            /* Garanter que o conteúdo não fique atrás do menu no Desktop (>=768px) */
+            @media (min-width: 768px) {
+                #app-sidebar { width: 256px !important; transform: translateX(0) !important; }
+                #app-content { margin-left: 256px !important; }
+            }
         </style>
     </head>
 
-    {{--
-        LAYOUT ESTÁTICO (Simplicidade Máxima):
-        ──────────────────────────────────────
-        • Desktop: Menu sempre visível (256px de largura fixa).
-        • Mobile: Menu overlay toggleable via sidebarOpen.
-        • Sem localStorage, sem flickering, sem classes dinâmicas complexas.
-    --}}
     <body class="font-sans antialiased bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           x-data="{ sidebarOpen: false }">
 
-        {{-- ===========================
-             SIDEBAR (Desktop fixo / Mobile overlay)
-             =========================== --}}
+        {{-- SIDEBAR --}}
         <aside
             id="app-sidebar"
-            class="fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-slate-300 w-64 transition-transform duration-300 ease-in-out md:translate-x-0"
+            class="fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-slate-300 w-64 transition-transform duration-300 ease-in-out -translate-x-full md:translate-x-0"
             x-bind:class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
         >
             @include('layouts.navigation')
         </aside>
 
-        {{-- Mobile backdrop (só aparece se sidebarOpen for true no mobile) --}}
+        {{-- Mobile backdrop --}}
         <div
             class="fixed inset-0 z-30 bg-slate-900/60 md:hidden"
             x-show="sidebarOpen"
@@ -42,13 +39,10 @@
             @click="sidebarOpen = false"
         ></div>
 
-        {{-- ===========================
-             CONTEÚDO PRINCIPAL
-             =========================== --}}
-        {{-- ml-64 no desktop para compensar o aside fixed --}}
+        {{-- CONTEÚDO PRINCIPAL --}}
         <div
             id="app-content"
-            class="flex flex-col min-h-screen transition-all duration-300 md:ml-64"
+            class="flex flex-col min-h-screen transition-all duration-300"
         >
             @include('layouts.top-bar')
 
