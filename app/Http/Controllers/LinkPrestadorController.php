@@ -11,6 +11,9 @@ use App\Helpers\ValidacaoHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\NewDemandNotification;
+use App\Models\NotificationSetting;
 
 class LinkPrestadorController extends Controller
 {
@@ -227,37 +230,53 @@ class LinkPrestadorController extends Controller
     /**
      * Gera links únicos para prestadores de uma demanda
      */
-    public static function gerarLinksParaDemanda(Demanda $demanda, array $prestadorIds): array
+    public static function gerarLinksParaDemanda(Demanda $demanda, array $prestadoresIds, bool $forceNotify = false)
     {
         $links = [];
 
-        foreach ($prestadorIds as $prestadorId) {
-            // Verifica se já existe link válido
-            $linkExistente = LinkPrestador::where('demanda_id', $demanda->id)
+        foreach ($prestadoresIds as $prestadorId) {
+            // Verifica se já existe um link válido para este prestador nesta demanda
+            $link = LinkPrestador::where('demanda_id', $demanda->id)
                 ->where('prestador_id', $prestadorId)
                 ->validos()
                 ->first();
 
-            if ($linkExistente) {
-                $links[] = $linkExistente;
-                continue;
+            $prestador = Prestador::find($prestadorId);
+            $novoLink = false;
+
+            if (!$link) {
+                // Cria novo link (sem token_acesso por padrão para facilitar o acesso direto)
+                $link = LinkPrestador::create([
+                    'demanda_id' => $demanda->id,
+                    'prestador_id' => $prestadorId,
+                    'token' => LinkPrestador::gerarToken(),
+                    'token_gerado_em' => now(),
+                    'expira_em' => now()->addDays(30), // Expira em 30 dias
+                    'usado' => false,
+                    'acessos' => 0,
+                ]);
+                $novoLink = true;
             }
 
-            // Busca o prestador para obter CPF/CNPJ
-            $prestador = Prestador::find($prestadorId);
-            
-            // Cria novo link (sem token_acesso por padrão para facilitar o acesso direto)
-            $link = LinkPrestador::create([
-                'demanda_id' => $demanda->id,
-                'prestador_id' => $prestadorId,
-                'token' => LinkPrestador::gerarToken(),
-                'token_gerado_em' => now(),
-                'expira_em' => now()->addDays(30), // Expira em 30 dias
-                'usado' => false,
-                'acessos' => 0,
-            ]);
-
             $links[] = $link;
+
+            // Notifica o prestador se for um novo link OU se forceNotify for true
+            if ($prestador && ($novoLink || $forceNotify)) {
+                $shouldNotify = NotificationSetting::where('key', 'notify_new_demand')
+                    ->where('administradora_id', $demanda->administradora_id)
+                    ->first()?->value === '1';
+                
+                // Fallback para global se não houver específico da empresa
+                if (!$shouldNotify) {
+                    $shouldNotify = NotificationSetting::where('key', 'notify_new_demand')
+                        ->whereNull('administradora_id')
+                        ->first()?->value === '1';
+                }
+
+                if ($shouldNotify) {
+                    $prestador->notify(new NewDemandNotification($demanda, $link));
+                }
+            }
         }
 
         return $links;

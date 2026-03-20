@@ -636,7 +636,7 @@
 
                         <div class="space-y-6">
                             <!-- Identificação do Prestador (se necessário) -->
-                            @if(!$link->nome_prestador || !$link->cpf_cnpj_autorizado)
+                            @if(!$prestador && (!$link->nome_prestador || !$link->cpf_cnpj_autorizado))
                                 <div class="bg-white border-2 border-indigo-100 rounded-lg p-6 mb-6">
                                     <h3 class="text-lg font-bold text-gray-900 mb-4">Sua Identificação</h3>
                                     <p class="text-sm text-gray-600 mb-4">Como este é seu primeiro contato, precisamos de alguns dados para o cadastro.</p>

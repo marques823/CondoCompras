@@ -16,6 +16,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\NewDemandNotification;
+use App\Notifications\NegotiationRequestedNotification;
+use App\Notifications\BudgetStatusNotification;
+use App\Models\NotificationSetting;
+use App\Channels\WhatsAppChannel;
 
 class DemandaController extends Controller
 {
@@ -217,7 +223,7 @@ class DemandaController extends Controller
             $paraAdicionar = array_diff($prestadoresNovos, $prestadoresAtuais);
             if (!empty($paraAdicionar)) {
                 $demanda->prestadores()->attach($paraAdicionar, ['status' => 'convidado']);
-                \App\Http\Controllers\LinkPrestadorController::gerarLinksParaDemanda($demanda, $paraAdicionar);
+                \App\Http\Controllers\LinkPrestadorController::gerarLinksParaDemanda($demanda, $paraAdicionar, true);
             }
         }
 
@@ -263,6 +269,13 @@ class DemandaController extends Controller
             $demanda->update(['status' => 'em_andamento']);
         });
 
+        // Notifica o prestador se a configuração estiver ativa
+        $shouldNotify = NotificationSetting::where('key', 'notify_budget_status')->first()?->value === '1';
+        if ($shouldNotify && $orcamento->prestador) {
+            $url = route('prestador.link.show', $orcamento->link_prestador_id ? $orcamento->linkPrestador->token : ($orcamento->linkPublico ? $orcamento->linkPublico->token : ''));
+            $orcamento->prestador->notify(new BudgetStatusNotification($orcamento, 'aprovado', $url));
+        }
+
         return redirect()->back()->with('success', 'Orçamento aprovado!');
     }
 
@@ -271,14 +284,15 @@ class DemandaController extends Controller
         $this->authorize('update', $demanda);
 
         $validated = $request->validate([
-            'prestador_id' => 'required|exists:prestadores,id',
+            'prestadores' => 'required|array',
+            'prestadores.*' => 'exists:prestadores,id',
         ]);
 
-        $demanda->prestadores()->syncWithoutDetaching([$validated['prestador_id']]);
+        $demanda->prestadores()->syncWithoutDetaching($validated['prestadores']);
         
-        \App\Http\Controllers\LinkPrestadorController::gerarLinksParaDemanda($demanda, [$validated['prestador_id']]);
+        \App\Http\Controllers\LinkPrestadorController::gerarLinksParaDemanda($demanda, $validated['prestadores'], true);
 
-        return redirect()->back()->with('success', 'Prestador adicionado à demanda!');
+        return redirect()->back()->with('success', 'Prestadores adicionados à demanda!');
     }
 
     public function removerPrestador(Demanda $demanda, Prestador $prestador)
@@ -302,6 +316,13 @@ class DemandaController extends Controller
 
         $orcamento->rejeitar($request->motivo_rejeicao);
 
+        // Notifica o prestador se a configuração estiver ativa
+        $shouldNotify = NotificationSetting::where('key', 'notify_budget_status')->first()?->value === '1';
+        if ($shouldNotify && $orcamento->prestador) {
+            $url = route('prestador.link.show', $orcamento->link_prestador_id ? $orcamento->linkPrestador->token : ($orcamento->linkPublico ? $orcamento->linkPublico->token : ''));
+            $orcamento->prestador->notify(new BudgetStatusNotification($orcamento, 'rejeitado', $url));
+        }
+
         return redirect()->back()->with('success', 'Orçamento rejeitado.');
     }
 
@@ -317,7 +338,7 @@ class DemandaController extends Controller
             'descricao' => 'required|string',
         ]);
 
-        Negociacao::create([
+        $negociacao = Negociacao::create([
             'demanda_id' => $demanda->id,
             'orcamento_id' => $orcamento->id,
             'prestador_id' => $orcamento->prestador_id,
@@ -328,6 +349,13 @@ class DemandaController extends Controller
             'criado_por' => Auth::id(),
             'status' => 'pendente',
         ]);
+
+        // Notifica o prestador se a configuração estiver ativa
+        $shouldNotify = NotificationSetting::where('key', 'notify_negotiation')->first()?->value === '1';
+        if ($shouldNotify && $orcamento->prestador) {
+            $url = route('prestador.link.show', $orcamento->link_prestador_id ? $orcamento->linkPrestador->token : ($orcamento->linkPublico ? $orcamento->linkPublico->token : ''));
+            $orcamento->prestador->notify(new NegotiationRequestedNotification($orcamento, $negociacao, $url));
+        }
 
         return redirect()->back()->with('success', 'Solicitação de negociação enviada!');
     }
@@ -371,6 +399,13 @@ class DemandaController extends Controller
             'ativo' => true,
             'expira_em' => now()->addDays(30),
         ]);
+
+        // Notifica via WhatsApp se a configuração estiver ativa (On-demand routing)
+        $shouldNotify = NotificationSetting::where('key', 'notify_new_demand')->first()?->value === '1';
+        if ($shouldNotify) {
+            Notification::route(WhatsAppChannel::class, $whatsappLimpo)
+                ->notify(new NewDemandNotification($demanda, $link, $validated['nome_prestador']));
+        }
 
         return redirect()->back()->with('success', 'Link público gerado com sucesso para o WhatsApp ' . $validated['whatsapp']);
     }

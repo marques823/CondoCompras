@@ -1,0 +1,17 @@
+[Unit]
+Description=CondoCompras Queue Worker
+After=network.target
+
+[Service]
+Type=simple
+User=tiago
+WorkingDirectory=/home/tiago/condocompras
+ExecStart=/usr/bin/php artisan queue:work --tries=3 --timeout=90
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=condocompras-worker
+
+[Install]
+WantedBy=multi-user.target

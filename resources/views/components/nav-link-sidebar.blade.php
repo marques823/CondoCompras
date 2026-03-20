@@ -1,13 +1,13 @@
-@props(['active', 'icon'])
+@props(['active', 'icon', 'submenu' => false])
 
 @php
 $linkStyle = ($active ?? false)
-    ? 'display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;font-size:0.875rem;font-weight:600;color:#ffffff;background:#2563eb;text-decoration:none;transition:all 0.15s;'
-    : 'display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;font-size:0.875rem;font-weight:500;color:#94c3e8;background:transparent;text-decoration:none;transition:all 0.15s;';
+    ? 'display:flex;align-items:center;gap:10px;padding:' . ($submenu ? '7px 10px' : '9px 12px') . ';border-radius:6px;font-size:' . ($submenu ? '0.8rem' : '0.875rem') . ';font-weight:600;color:#ffffff;background:#2563eb;text-decoration:none;transition:all 0.15s;'
+    : 'display:flex;align-items:center;gap:10px;padding:' . ($submenu ? '7px 10px' : '9px 12px') . ';border-radius:6px;font-size:' . ($submenu ? '0.8rem' : '0.875rem') . ';font-weight:500;color:#94c3e8;background:transparent;text-decoration:none;transition:all 0.15s;';
 
 $iconStyle = ($active ?? false)
-    ? 'width:18px;height:18px;flex-shrink:0;color:#ffffff;'
-    : 'width:18px;height:18px;flex-shrink:0;color:#7fa8c9;';
+    ? 'width:' . ($submenu ? '14px' : '18px') . ';height:' . ($submenu ? '14px' : '18px') . ';flex-shrink:0;color:#ffffff;'
+    : 'width:' . ($submenu ? '14px' : '18px') . ';height:' . ($submenu ? '14px' : '18px') . ';flex-shrink:0;color:#7fa8c9;';
 @endphp
 
 <a {{ $attributes->merge(['style' => $linkStyle]) }}
