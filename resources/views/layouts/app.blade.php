@@ -11,47 +11,45 @@
         <style>
             [x-cloak] { display: none !important; }
             
-            /* Garanter que o conteúdo não fique atrás do menu no Desktop (>=768px) */
+            /* Layout Fixo Robusto (256px sidebar) */
             @media (min-width: 768px) {
-                #app-sidebar { width: 256px !important; transform: translateX(0) !important; }
-                #app-content { margin-left: 256px !important; }
+                #sidebar-main { width: 256px !important; transform: translateX(0) !important; position: fixed !important; height: 100vh; }
+                #content-main { margin-left: 256px !important; }
+                
+                /* Normalizar classes de centralização das páginas internas */
+                #content-main .mx-auto { margin-left: 0 !important; margin-right: 0 !important; }
+                #content-main .max-w-7xl { max-width: none !important; }
             }
         </style>
     </head>
 
-    <body class="font-sans antialiased bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-          x-data="{ sidebarOpen: false }">
+    <body class="font-sans antialiased bg-gray-50 text-gray-900" x-data="{ sidebarOpen: false }">
 
-        {{-- SIDEBAR --}}
-        <aside
-            id="app-sidebar"
-            class="fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-slate-300 w-64 transition-transform duration-300 ease-in-out -translate-x-full md:translate-x-0"
-            x-bind:class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
-        >
+        {{-- Barra Lateral --}}
+        <aside id="sidebar-main" class="fixed inset-y-0 left-0 z-40 bg-slate-900 text-slate-300 transition-transform duration-300 -translate-x-full md:translate-x-0 overflow-hidden flex flex-col">
             @include('layouts.navigation')
         </aside>
 
-        {{-- Mobile backdrop --}}
-        <div
-            class="fixed inset-0 z-30 bg-slate-900/60 md:hidden"
-            x-show="sidebarOpen"
-            x-cloak
-            @click="sidebarOpen = false"
-        ></div>
+        {{-- Backdrop Mobile --}}
+        <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false" class="fixed inset-0 z-30 bg-black/50 md:hidden"></div>
 
-        {{-- CONTEÚDO PRINCIPAL --}}
-        <div
-            id="app-content"
-            class="flex flex-col min-h-screen transition-all duration-300"
-        >
+        {{-- Container de Conteúdo --}}
+        <div id="content-main" class="min-h-screen flex flex-col">
+            
             @include('layouts.top-bar')
 
-            <main class="flex-1 px-4 sm:px-6 lg:px-8 py-8">
-                @isset($header)
-                    <div class="mb-6">{{ $header }}</div>
-                @endisset
-                <div>{{ $slot }}</div>
+            {{-- Área do Título (Título da Página) --}}
+            @isset($header)
+                <div class="bg-white border-b border-gray-100 px-6 py-4">
+                    {{ $header }}
+                </div>
+            @endisset
+
+            {{-- Área do Slot (Conteúdo da Página) --}}
+            <main class="flex-1 p-6">
+                {{ $slot }}
             </main>
+
         </div>
 
     </body>
