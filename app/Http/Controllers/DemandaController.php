@@ -275,6 +275,8 @@ class DemandaController extends Controller
         ]);
 
         $demanda->prestadores()->syncWithoutDetaching([$validated['prestador_id']]);
+        
+        \App\Http\Controllers\LinkPrestadorController::gerarLinksParaDemanda($demanda, [$validated['prestador_id']]);
 
         return redirect()->back()->with('success', 'Prestador adicionado à demanda!');
     }
@@ -337,53 +339,40 @@ class DemandaController extends Controller
     {
         $this->authorize('view', $demanda);
 
-        // Valida CPF/CNPJ e nome do prestador
+        // Valida WhatsApp e nome opcional do prestador
         $validated = $request->validate([
-            'cpf_cnpj' => 'required|string|max:18',
-            'nome_prestador' => 'required|string|max:255',
+            'whatsapp' => 'required|string|min:10',
+            'nome_prestador' => 'nullable|string|max:255',
         ]);
 
-        $cpfCnpjLimpo = preg_replace('/\D/', '', $validated['cpf_cnpj']);
-        if (strlen($cpfCnpjLimpo) != 11 && strlen($cpfCnpjLimpo) != 14) {
-            return redirect()->back()
-                ->withErrors(['cpf_cnpj' => 'CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos.'])
-                ->withInput();
-        }
+        // Limpa o WhatsApp para salvar apenas números
+        $whatsappLimpo = preg_replace('/\D/', '', $validated['whatsapp']);
 
-        // Valida CPF/CNPJ usando helper
-        if (!\App\Helpers\ValidacaoHelper::validarCPFouCNPJ($validated['cpf_cnpj'])) {
-            return redirect()->back()
-                ->withErrors(['cpf_cnpj' => 'CPF ou CNPJ inválido.'])
-                ->withInput();
-        }
-
-        // Verifica se já existe um link ativo para este CPF/CNPJ
+        // Verifica se já existe um link ativo para este WhatsApp nesta demanda
         $linkExistente = LinkDemandaPublico::where('demanda_id', $demanda->id)
-            ->where('cpf_cnpj_autorizado', $cpfCnpjLimpo)
+            ->where('whatsapp', $whatsappLimpo)
             ->where('ativo', true)
             ->first();
 
         if ($linkExistente) {
             return redirect()->back()
-                ->with('info', 'Já existe um link ativo para este CPF/CNPJ. Token: ' . $linkExistente->token_acesso);
+                ->with('info', 'Já existe um link ativo enviado para este WhatsApp.');
         }
 
-        // Cria novo link com autenticação (expira em 30 dias por padrão)
+        // Cria novo link (expira em 30 dias por padrão)
+        // Não exige mais CPF/CNPJ e Token de Acesso obrigatórios no início
         $link = LinkDemandaPublico::create([
             'demanda_id' => $demanda->id,
             'administradora_id' => $demanda->administradora_id,
             'token' => LinkDemandaPublico::gerarToken(),
-            'token_acesso' => LinkDemandaPublico::gerarTokenAcesso(),
-            'cpf_cnpj_autorizado' => $cpfCnpjLimpo,
+            'whatsapp' => $whatsappLimpo,
             'nome_prestador' => $validated['nome_prestador'],
             'token_gerado_em' => now(),
             'ativo' => true,
             'expira_em' => now()->addDays(30),
         ]);
 
-        $mensagem = 'Link público gerado com sucesso! Token de acesso: ' . $link->token_acesso;
-
-        return redirect()->back()->with('success', $mensagem);
+        return redirect()->back()->with('success', 'Link público gerado com sucesso para o WhatsApp ' . $validated['whatsapp']);
     }
 
     /**

@@ -81,9 +81,8 @@ class DemandaPublicaController extends Controller
             return view('publico.link-inativo', compact('link'));
         }
 
-        // Verifica se precisa de autenticação e se está autenticado
-        // Se o link tem token_acesso, exige autenticação
-        if ($link->token_acesso) {
+        // Se o link tem token_acesso e cpf_cnpj_autorizado, exige autenticação (legado)
+        if ($link->token_acesso && $link->cpf_cnpj_autorizado) {
             if (!$link->isAutenticado()) {
                 return redirect()->route('publico.demanda.login', $token);
             }
@@ -103,30 +102,37 @@ class DemandaPublicaController extends Controller
             ->where('perfil', 'zelador')
             ->first();
 
-        // Verifica se já existe orçamento enviado por este prestador (usando CPF/CNPJ do link)
+        // Verifica se já existe orçamento enviado por este prestador
         $jaEnviouOrcamento = false;
         $orcamentoEnviado = null;
         $negociacoes = collect();
         
+        $prestador = null;
+
+        // Tenta identificar o prestador por CPF autorizado ou por WhatsApp
         if ($link->cpf_cnpj_autorizado) {
-            $prestador = \App\Models\Prestador::where('cpf_cnpj', $link->cpf_cnpj_autorizado)
+            $prestador = \App\Models\Prestador::where('cpf_cnpj', preg_replace('/\D/', '', $link->cpf_cnpj_autorizado))
                 ->where('administradora_id', $demanda->administradora_id)
                 ->first();
+        } elseif ($link->whatsapp) {
+            $prestador = \App\Models\Prestador::where('telefone', $link->whatsapp)
+                ->where('administradora_id', $demanda->administradora_id)
+                ->first();
+        }
+        
+        if ($prestador) {
+            $orcamentoEnviado = \App\Models\Orcamento::where('demanda_id', $demanda->id)
+                ->where('prestador_id', $prestador->id)
+                ->with(['negociacoes' => function($query) {
+                    $query->orderBy('created_at', 'desc');
+                }])
+                ->first();
             
-            if ($prestador) {
-                $orcamentoEnviado = \App\Models\Orcamento::where('demanda_id', $demanda->id)
-                    ->where('prestador_id', $prestador->id)
-                    ->with(['negociacoes' => function($query) {
-                        $query->orderBy('created_at', 'desc');
-                    }])
-                    ->first();
-                
-                $jaEnviouOrcamento = $orcamentoEnviado !== null;
-                
-                // Carrega negociações do orçamento
-                if ($orcamentoEnviado && $orcamentoEnviado->negociacoes) {
-                    $negociacoes = $orcamentoEnviado->negociacoes;
-                }
+            $jaEnviouOrcamento = $orcamentoEnviado !== null;
+            
+            // Carrega negociações do orçamento
+            if ($orcamentoEnviado && $orcamentoEnviado->negociacoes) {
+                $negociacoes = $orcamentoEnviado->negociacoes;
             }
         }
 
@@ -156,20 +162,32 @@ class DemandaPublicaController extends Controller
 
         $demanda = $link->demanda;
 
-        $validated = $request->validate([
+        $rules = [
             'valor' => 'required|numeric|min:0',
             'descricao' => 'nullable|string',
             'validade_dias' => 'nullable|integer|min:1|max:365',
             'arquivo' => 'nullable|file|mimes:pdf|max:10240', // 10MB
-        ]);
+        ];
 
-        // Busca ou cria prestador usando o CPF/CNPJ autorizado no link
-        $cpfCnpj = $link->cpf_cnpj_autorizado;
-        
+        // Se o link não tem CPF autorizado, o formulário deve enviar agora
+        if (!$link->cpf_cnpj_autorizado) {
+            $rules['cpf_cnpj'] = 'required|string|max:18';
+        }
+
+        // Se o link não tem nome definido, o formulário deve enviar agora
+        if (!$link->nome_prestador) {
+            $rules['nome_razao_social'] = 'required|string|max:255';
+        }
+
+        $validated = $request->validate($rules);
+
+        // Identifica os dados do prestador
+        $cpfCnpj = preg_replace('/\D/', '', $request->cpf_cnpj ?? $link->cpf_cnpj_autorizado);
+        $nomePrestador = $request->nome_razao_social ?? $link->nome_prestador;
+        $whatsapp = $link->whatsapp;
+
         if (!$cpfCnpj) {
-            return redirect()->back()
-                ->withErrors(['error' => 'Link não possui CPF/CNPJ autorizado.'])
-                ->withInput();
+            return redirect()->back()->withErrors(['error' => 'É necessário informar o CPF/CNPJ.'])->withInput();
         }
 
         // Busca prestador pelo CPF/CNPJ
@@ -177,24 +195,24 @@ class DemandaPublicaController extends Controller
             ->where('administradora_id', $demanda->administradora_id)
             ->first();
 
-        // Se não encontrou, cria um prestador usando o nome do link
+        // Se não encontrou, cria um prestador
         if (!$prestador) {
-            $nomePrestador = $link->nome_prestador ?? 'Prestador - ' . substr($cpfCnpj, -4);
-            
             $prestador = Prestador::create([
                 'administradora_id' => $demanda->administradora_id,
                 'cpf_cnpj' => $cpfCnpj,
-                'nome_razao_social' => $nomePrestador,
-                'email' => 'prestador_' . $cpfCnpj . '@temp.com', // Email temporário
-                'telefone' => null,
+                'nome_razao_social' => $nomePrestador ?? 'Prestador via Link',
+                'email' => 'prestador_' . $cpfCnpj . '@temp.com',
+                'telefone' => $whatsapp, // Vincula o WhatsApp do link ao cadastro
                 'ativo' => true,
             ]);
         } else {
-            // Atualiza o nome se o link tiver um nome definido e o prestador não tiver nome completo
-            if ($link->nome_prestador && (!$prestador->nome_razao_social || $prestador->nome_razao_social === 'Prestador - ' . substr($cpfCnpj, -4))) {
-                $prestador->update([
-                    'nome_razao_social' => $link->nome_prestador,
-                ]);
+            // Se já existe, garante que o telefone (WhatsApp) esteja atualizado
+            if ($whatsapp && !$prestador->telefone) {
+                $prestador->update(['telefone' => $whatsapp]);
+            }
+            // Atualiza nome se estiver vindo vazio no cadastro
+            if ($nomePrestador && (!$prestador->nome_razao_social || str_contains($prestador->nome_razao_social, 'Prestador -'))) {
+                $prestador->update(['nome_razao_social' => $nomePrestador]);
             }
         }
 
@@ -249,6 +267,11 @@ class DemandaPublicaController extends Controller
         // Associa prestador à demanda se ainda não estiver associado
         $demanda->prestadores()->syncWithoutDetaching([$prestador->id]);
 
+        // Se a demanda estava "aberta", move para "aguardando_orcamento" automaticamente
+        if ($demanda->status === 'aberta') {
+            $demanda->update(['status' => 'aguardando_orcamento']);
+        }
+
         // Recarrega os dados para exibir na view
         $demanda->load(['condominio', 'categoriaServico', 'orcamentos' => function ($query) use ($prestador) {
             $query->where('prestador_id', $prestador->id)->orderBy('created_at', 'desc');
@@ -270,17 +293,21 @@ class DemandaPublicaController extends Controller
             return view('publico.link-inativo', compact('link'));
         }
 
-        // Verifica se precisa de autenticação e se está autenticado
-        if ($link->token_acesso) {
+        // Verifica se precisa de autenticação e se está autenticado (fluxo legado)
+        if ($link->token_acesso && $link->cpf_cnpj_autorizado) {
             if (!$link->isAutenticado()) {
                 return redirect()->route('publico.demanda.login', $token);
             }
         }
 
-        // Busca o prestador pelo CPF/CNPJ do link
+        // Busca o prestador pelo CPF/CNPJ do link ou por WhatsApp
         $prestador = null;
         if ($link->cpf_cnpj_autorizado) {
-            $prestador = Prestador::where('cpf_cnpj', $link->cpf_cnpj_autorizado)
+            $prestador = Prestador::where('cpf_cnpj', preg_replace('/\D/', '', $link->cpf_cnpj_autorizado))
+                ->where('administradora_id', $link->demanda->administradora_id)
+                ->first();
+        } elseif ($link->whatsapp) {
+            $prestador = Prestador::where('telefone', $link->whatsapp)
                 ->where('administradora_id', $link->demanda->administradora_id)
                 ->first();
         }
@@ -350,17 +377,21 @@ class DemandaPublicaController extends Controller
             return view('publico.link-inativo', compact('link'));
         }
 
-        // Verifica se precisa de autenticação e se está autenticado
-        if ($link->token_acesso) {
+        // Verifica se precisa de autenticação e se está autenticado (fluxo legado)
+        if ($link->token_acesso && $link->cpf_cnpj_autorizado) {
             if (!$link->isAutenticado()) {
                 return redirect()->route('publico.demanda.login', $token);
             }
         }
 
-        // Busca o prestador pelo CPF/CNPJ do link
+        // Busca o prestador pelo CPF/CNPJ do link ou por WhatsApp
         $prestador = null;
         if ($link->cpf_cnpj_autorizado) {
-            $prestador = Prestador::where('cpf_cnpj', $link->cpf_cnpj_autorizado)
+            $prestador = Prestador::where('cpf_cnpj', preg_replace('/\D/', '', $link->cpf_cnpj_autorizado))
+                ->where('administradora_id', $link->demanda->administradora_id)
+                ->first();
+        } elseif ($link->whatsapp) {
+            $prestador = Prestador::where('telefone', $link->whatsapp)
                 ->where('administradora_id', $link->demanda->administradora_id)
                 ->first();
         }
@@ -398,8 +429,8 @@ class DemandaPublicaController extends Controller
             return view('publico.link-inativo', compact('link'));
         }
 
-        // Verifica se precisa de autenticação e se está autenticado
-        if ($link->token_acesso) {
+        // Verifica se precisa de autenticação e se está autenticado (fluxo legado)
+        if ($link->token_acesso && $link->cpf_cnpj_autorizado) {
             if (!$link->isAutenticado()) {
                 return redirect()->route('publico.demanda.login', $token);
             }
@@ -420,7 +451,11 @@ class DemandaPublicaController extends Controller
         // Verifica se o orçamento pertence ao prestador do link
         $prestador = null;
         if ($link->cpf_cnpj_autorizado) {
-            $prestador = Prestador::where('cpf_cnpj', $link->cpf_cnpj_autorizado)
+            $prestador = Prestador::where('cpf_cnpj', preg_replace('/\D/', '', $link->cpf_cnpj_autorizado))
+                ->where('administradora_id', $orcamento->demanda->administradora_id)
+                ->first();
+        } elseif ($link->whatsapp) {
+            $prestador = Prestador::where('telefone', $link->whatsapp)
                 ->where('administradora_id', $orcamento->demanda->administradora_id)
                 ->first();
         }

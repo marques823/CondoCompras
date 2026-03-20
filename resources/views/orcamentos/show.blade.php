@@ -153,36 +153,69 @@
                     <!-- Ações -->
                     @php
                         $temOrcamentoAprovado = $orcamento->demanda->orcamentos->where('status', 'aprovado')->isNotEmpty();
+                        $linkWhatsApp = $orcamento->demanda->linksPublicos->where('whatsapp', $orcamento->prestador->telefone)->first() 
+                                      ?? \App\Models\LinkPrestador::where('demanda_id', $orcamento->demanda_id)->where('prestador_id', $orcamento->prestador_id)->first();
+                        $zapPrestador = $orcamento->prestador->telefone ?? ($linkWhatsApp ? $linkWhatsApp->whatsapp : null);
+                        $zapLimpo = preg_replace('/\D/', '', $zapPrestador);
+                        $urlPublica = $linkWhatsApp ? route('publico.demanda.show', $linkWhatsApp->token) : '#';
                     @endphp
+
                     @if($orcamento->status === 'recebido' && !$temOrcamentoAprovado)
-                    <div class="mb-6 flex gap-2">
+                    <div class="mb-6 flex flex-wrap gap-2">
                         <button type="button" onclick="abrirModalAprovarOrcamento()" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md">
                             Aprovar Orçamento
                         </button>
                         <button type="button" onclick="abrirModalRejeitarOrcamento()" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md">
                             Rejeitar Orçamento
                         </button>
-                        <button type="button" onclick="abrirModalNegociacao()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
-                            Negociar
-                        </button>
+                        @if($orcamento->negociacoes->where('status', 'pendente')->isEmpty())
+                            <button type="button" onclick="abrirModalNegociacao()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
+                                Negociar
+                            </button>
+                        @endif
                     </div>
                     @elseif($orcamento->status === 'recebido' && $temOrcamentoAprovado)
                     <div class="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg">
                         <p class="text-sm text-yellow-800 dark:text-yellow-200">
                             <strong>Atenção:</strong> Outro orçamento já foi aprovado para esta demanda. Ao aprovar este orçamento, o outro será automaticamente rejeitado.
                         </p>
-                        <div class="mt-3 flex gap-2">
+                        <div class="mt-3 flex flex-wrap gap-2">
                             <button type="button" onclick="abrirModalAprovarOrcamento()" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md">
-                                Aprovar Este Orçamento (Substituir)
+                                Aprovar Este (Substituir)
                             </button>
                             <button type="button" onclick="abrirModalRejeitarOrcamento()" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md">
                                 Rejeitar Orçamento
                             </button>
-                            <button type="button" onclick="abrirModalNegociacao()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
-                                Negociar
-                            </button>
+                            @if($orcamento->negociacoes->where('status', 'pendente')->isEmpty())
+                                <button type="button" onclick="abrirModalNegociacao()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
+                                    Negociar
+                                </button>
+                            @endif
                         </div>
                     </div>
+                    @endif
+
+                    @if($zapLimpo && $urlPublica != '#')
+                        <div class="mb-6 flex flex-wrap gap-2 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <span class="w-full text-xs font-bold text-gray-500 uppercase mb-2">Notificar via WhatsApp</span>
+                            
+                            @if($orcamento->status === 'aprovado')
+                                <a href="https://wa.me/55{{ $zapLimpo }}?text={{ urlencode('✅ Ótima notícia! Seu orçamento para a demanda ' . $orcamento->demanda->titulo . ' foi APROVADO. Acesse aqui para ver os detalhes e concluir o serviço: ' . $urlPublica) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-md hover:bg-green-200 font-bold transition-colors">
+                                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M17.472 14.382c-.297.147-1.758.867-2.03.967-.273.099-.471.148-.67.448-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                                    Notificar Aprovação
+                                </a>
+                            @elseif($orcamento->status === 'rejeitado')
+                                <a href="https://wa.me/55{{ $zapLimpo }}?text={{ urlencode('Olá. Informamos que o seu orçamento para a demanda ' . $orcamento->demanda->titulo . ' não foi selecionado desta vez. Agradecemos o envio! Detalhes: ' . $urlPublica) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200 font-bold transition-colors">
+                                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M17.472 14.382c-.297.147-1.758.867-2.03.967-.273.099-.471.148-.67.448-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                                    Notificar Rejeição
+                                </a>
+                            @elseif($orcamento->negociacoes->where('status', 'pendente')->count() > 0)
+                                <a href="https://wa.me/55{{ $zapLimpo }}?text={{ urlencode('Olá! Temos uma proposta de negociação para o seu orçamento da demanda ' . $orcamento->demanda->titulo . '. Por favor, acesse o link para ver os detalhes e responder: ' . $urlPublica) }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200 font-bold transition-colors">
+                                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M17.472 14.382c-.297.147-1.758.867-2.03.967-.273.099-.471.148-.67.448-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                                    Notificar Negociação
+                                </a>
+                            @endif
+                        </div>
                     @endif
 
                     <!-- Negociações -->

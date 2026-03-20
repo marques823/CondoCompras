@@ -81,9 +81,8 @@ class LinkPrestadorController extends Controller
             return view('publico.link-inativo', ['link' => $link]);
         }
 
-        // Verifica se precisa de autenticação e se está autenticado
-        // Se o link tem token_acesso, exige autenticação
-        if ($link->token_acesso) {
+        // Se o link tem token_acesso e cpf_cnpj_autorizado, exige autenticação (legado)
+        if ($link->token_acesso && $link->cpf_cnpj_autorizado) {
             if (!$link->isAutenticado()) {
                 return redirect()->route('prestador.link.login', $token);
             }
@@ -208,6 +207,11 @@ class LinkPrestadorController extends Controller
             'status' => 'enviou_orcamento',
         ]);
 
+        // Se a demanda estava "aberta", move para "aguardando_orcamento" automaticamente
+        if ($demanda->status === 'aberta') {
+            $demanda->update(['status' => 'aguardando_orcamento']);
+        }
+
         // Marca link como usado após o primeiro envio (bloqueia novos envios)
         $link->marcarComoUsado();
 
@@ -242,13 +246,11 @@ class LinkPrestadorController extends Controller
             // Busca o prestador para obter CPF/CNPJ
             $prestador = Prestador::find($prestadorId);
             
-            // Cria novo link com autenticação
+            // Cria novo link (sem token_acesso por padrão para facilitar o acesso direto)
             $link = LinkPrestador::create([
                 'demanda_id' => $demanda->id,
                 'prestador_id' => $prestadorId,
                 'token' => LinkPrestador::gerarToken(),
-                'token_acesso' => LinkPrestador::gerarTokenAcesso(),
-                'cpf_cnpj_autorizado' => $prestador->cpf_cnpj ?? null,
                 'token_gerado_em' => now(),
                 'expira_em' => now()->addDays(30), // Expira em 30 dias
                 'usado' => false,

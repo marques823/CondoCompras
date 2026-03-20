@@ -361,14 +361,45 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                                                 @php
                                                     $temOrcamentoAprovado = $demanda->orcamentos->where('status', 'aprovado')->isNotEmpty();
+                                                    $linkWhatsApp = $demanda->linksPublicos->where('whatsapp', $orcamento->prestador->telefone)->first() 
+                                                                  ?? \App\Models\LinkPrestador::where('demanda_id', $demanda->id)->where('prestador_id', $orcamento->prestador_id)->first();
+                                                    $zapPrestador = $orcamento->prestador->telefone ?? ($linkWhatsApp ? $linkWhatsApp->whatsapp : null);
+                                                    $zapLimpo = preg_replace('/\D/', '', $zapPrestador);
+                                                    $urlPublica = $linkWhatsApp ? route('publico.demanda.show', $linkWhatsApp->token) : '#';
                                                 @endphp
+
                                                 @if($orcamento->status === 'recebido' && !$temOrcamentoAprovado && $orcamento->prestador)
-                                                    <button onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ addslashes($orcamento->prestador->nome_razao_social ?? 'N/A') }}')" class="text-green-600 hover:text-green-900">Aprovar</button>
+                                                    @php
+                                                        $temNegociacaoPendente = $orcamento->negociacoes->where('status', 'pendente')->isNotEmpty();
+                                                    @endphp
+                                                    <button onclick="abrirModalAprovarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ addslashes($orcamento->prestador->nome_razao_social ?? 'N/A') }}')" class="text-green-600 hover:text-green-900 font-bold">Aprovar</button>
                                                     <button onclick="abrirModalRejeitarOrcamento({{ $orcamento->id }}, '{{ number_format($orcamento->valor, 2, ',', '.') }}', '{{ addslashes($orcamento->prestador->nome_razao_social ?? 'N/A') }}')" class="text-red-600 hover:text-red-900">Rejeitar</button>
-                                                    <button onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ addslashes($orcamento->prestador->nome_razao_social ?? 'N/A') }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
+                                                    @if(!$temNegociacaoPendente)
+                                                        <button onclick="abrirModalNegociacao({{ $orcamento->id }}, {{ $orcamento->valor }}, '{{ addslashes($orcamento->prestador->nome_razao_social ?? 'N/A') }}')" class="text-blue-600 hover:text-blue-900">Negociar</button>
+                                                    @endif
                                                 @elseif($orcamento->status === 'recebido' && $temOrcamentoAprovado)
                                                     <span class="text-gray-400 text-xs">Outro orçamento já foi aprovado</span>
                                                 @endif
+
+                                                @if($zapLimpo && $urlPublica != '#')
+                                                    @if($orcamento->status === 'aprovado')
+                                                        <a href="https://wa.me/55{{ $zapLimpo }}?text={{ urlencode('✅ Ótima notícia! Seu orçamento para a demanda ' . $demanda->titulo . ' foi APROVADO. Acesse aqui para ver os detalhes e concluir o serviço: ' . $urlPublica) }}" target="_blank" class="inline-flex items-center text-green-700 hover:text-green-900 font-bold" title="Enviar WhatsApp de Aprovação">
+                                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M17.472 14.382c-.297.147-1.758.867-2.03.967-.273.099-.471.148-.67.448-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                                                            Aprovação
+                                                        </a>
+                                                    @elseif($orcamento->status === 'rejeitado')
+                                                        <a href="https://wa.me/55{{ $zapLimpo }}?text={{ urlencode('Olá. Informamos que o seu orçamento para a demanda ' . $demanda->titulo . ' não foi selecionado desta vez. Agradecemos o envio! Detalhes: ' . $urlPublica) }}" target="_blank" class="inline-flex items-center text-red-700 hover:text-red-900" title="Enviar WhatsApp de Rejeição">
+                                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M17.472 14.382c-.297.147-1.758.867-2.03.967-.273.099-.471.148-.67.448-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                                                            Rejeição
+                                                        </a>
+                                                    @elseif($orcamento->negociacoes->where('status', 'pendente')->count() > 0)
+                                                        <a href="https://wa.me/55{{ $zapLimpo }}?text={{ urlencode('Olá! Temos uma proposta de negociação para o seu orçamento da demanda ' . $demanda->titulo . '. Por favor, acesse o link para ver os detalhes e responder: ' . $urlPublica) }}" target="_blank" class="inline-flex items-center text-blue-700 hover:text-blue-900 font-bold" title="Notificar Negociação Pelo WhatsApp">
+                                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M17.472 14.382c-.297.147-1.758.867-2.03.967-.273.099-.471.148-.67.448-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                                                            Notificar Negociação
+                                                        </a>
+                                                    @endif
+                                                @endif
+
                                                 <a href="{{ route('orcamentos.show', $orcamento) }}" class="text-indigo-600 hover:text-indigo-900">Detalhes</a>
                                             </td>
                                         </tr>
@@ -783,15 +814,15 @@
         }
 
         function copiarLinkEspecifico(token, tokenAcesso) {
-            const linkUrl = '{{ url("/") }}/publico/demanda-prestador/' + token + '/login';
+            const linkUrl = '{{ url("/") }}/publico/demanda-prestador/' + token;
             navigator.clipboard.writeText(linkUrl).then(() => {
-                alert('Link copiado! Token: ' + tokenAcesso);
+                alert('Link copiado!');
             });
         }
 
         function compartilharWhatsAppEspecifico(token, tokenAcesso) {
-            const linkUrl = '{{ url("/") }}/publico/demanda-prestador/' + token + '/login';
-            const text = 'Olá! Você foi convidado para enviar um orçamento.\n\nLink: ' + linkUrl + '\nToken de acesso: ' + tokenAcesso;
+            const linkUrl = '{{ url("/") }}/publico/demanda-prestador/' + token;
+            const text = 'Olá! Você foi convidado para enviar um orçamento.\n\nLink: ' + linkUrl;
             window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
         }
 
@@ -860,17 +891,17 @@
                                                     @endif
                                                 </p>
                                                 <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                                                    CPF/CNPJ: 
-                                                    @if($link->cpf_cnpj_autorizado)
+                                                    WhatsApp: 
+                                                    @if($link->whatsapp)
                                                         @php
-                                                            $doc = preg_replace('/\D/', '', $link->cpf_cnpj_autorizado);
-                                                            if(strlen($doc) == 11) {
-                                                                $formatado = preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $doc);
+                                                            $zap = preg_replace('/\D/', '', $link->whatsapp);
+                                                            if(strlen($zap) == 11) {
+                                                                $zapFmt = '(' . substr($zap, 0, 2) . ') ' . substr($zap, 2, 5) . '-' . substr($zap, 7);
                                                             } else {
-                                                                $formatado = preg_replace('/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/', '$1.$2.$3/$4-$5', $doc);
+                                                                $zapFmt = $zap;
                                                             }
                                                         @endphp
-                                                        {{ $formatado }}
+                                                        {{ $zapFmt }}
                                                     @else
                                                         Não informado
                                                     @endif
@@ -895,7 +926,7 @@
                                             </label>
                                             <div class="flex gap-2">
                                                 <input type="text" 
-                                                       value="{{ route('publico.demanda.login', $link->token) }}" 
+                                                       value="{{ route('publico.demanda.show', $link->token) }}" 
                                                        readonly 
                                                        class="flex-1 text-xs rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-100">
                                                 <button type="button" 
@@ -908,17 +939,25 @@
                                         
                                         @if($link->token_acesso)
                                             <div class="mb-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-                                                <p class="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">🔑 Token de Acesso:</p>
+                                                <p class="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">🔑 Token de Acesso (Login Legado):</p>
                                                 <p class="text-lg font-bold text-yellow-900 dark:text-yellow-100 tracking-widest">{{ $link->token_acesso }}</p>
                                             </div>
                                         @endif
                                         
                                         <div class="flex gap-2">
-                                            <button type="button" 
-                                                    onclick="compartilharWhatsAppEspecifico('{{ $link->token }}', '{{ $link->token_acesso }}')" 
-                                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-2 px-3 rounded-md">
-                                                📱 WhatsApp
-                                            </button>
+                                            @if($link->whatsapp)
+                                                <a href="https://wa.me/55{{ $link->whatsapp }}?text={{ urlencode('Olá! Segue o link para enviar o orçamento da demanda ' . $demanda->titulo . ': ' . route('publico.demanda.show', $link->token)) }}" 
+                                                   target="_blank"
+                                                   class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-2 px-3 rounded-md text-center">
+                                                    📱 Chamar no WhatsApp
+                                                </a>
+                                            @else
+                                                <button type="button" 
+                                                        onclick="compartilharWhatsAppEspecifico('{{ $link->token }}', '{{ $link->token_acesso }}')" 
+                                                        class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium py-2 px-3 rounded-md">
+                                                    📱 Compartilhar
+                                                </button>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach
@@ -931,8 +970,7 @@
                             Gerar Novo Link
                         </h4>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                            Gere um novo link público seguro para compartilhar esta demanda com prestadores. 
-                            O prestador precisará informar CPF/CNPJ e token de acesso para acessar.
+                            O prestador poderá acessar o link para ver a demanda e só precisará se identificar no momento de enviar o orçamento.
                         </p>
                         <form method="POST" action="{{ route('demandas.gerar-link', $demanda) }}">
                             @csrf
@@ -948,40 +986,36 @@
                             @endif
                             
                             <div class="mb-4">
-                                <label for="nome_prestador" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Nome do Prestador <span class="text-red-500">*</span>
+                                <label for="whatsapp" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    WhatsApp do Prestador <span class="text-red-500">*</span>
                                 </label>
                                 <input type="text" 
-                                       id="nome_prestador" 
-                                       name="nome_prestador" 
+                                       id="whatsapp" 
+                                       name="whatsapp" 
                                        required
-                                       placeholder="Nome ou Razão Social do prestador"
-                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100 @error('nome_prestador') border-red-500 @enderror"
-                                       value="{{ old('nome_prestador') }}">
+                                       placeholder="(00) 00000-0000"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100 @error('whatsapp') border-red-500 @enderror"
+                                       value="{{ old('whatsapp') }}">
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Nome completo ou razão social do prestador que receberá o link.
+                                    Usado para identificar o prestador e facilitar o contato direto.
                                 </p>
                             </div>
 
                             <div class="mb-4">
-                                <label for="cpf_cnpj" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    CPF/CNPJ do Prestador <span class="text-red-500">*</span>
+                                <label for="nome_prestador" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Nome do Prestador (Opcional)
                                 </label>
                                 <input type="text" 
-                                       id="cpf_cnpj" 
-                                       name="cpf_cnpj" 
-                                       required
-                                       placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100 @error('cpf_cnpj') border-red-500 @enderror"
-                                       value="{{ old('cpf_cnpj') }}">
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Apenas este CPF/CNPJ poderá acessar o link com o token de acesso gerado.
-                                </p>
+                                       id="nome_prestador" 
+                                       name="nome_prestador" 
+                                       placeholder="Nome ou Empresa"
+                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-gray-100"
+                                       value="{{ old('nome_prestador') }}">
                             </div>
                             
                             <button type="submit" 
                                     class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md">
-                                Gerar Link Público Seguro
+                                Gerar Link de Compartilhamento
                             </button>
                         </form>
                     </div>
