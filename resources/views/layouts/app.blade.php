@@ -22,7 +22,12 @@
           Não depende de flex, de classes Tailwind dinâmicas, nem de z-index.
     --}}
     <body class="font-sans antialiased bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-          x-data="{ sidebarOpen: window.innerWidth >= 768 }">
+          x-data="{ 
+              sidebarOpen: localStorage.getItem('sidebar_state') !== null 
+                  ? localStorage.getItem('sidebar_state') === 'true' 
+                  : window.innerWidth >= 768 
+          }"
+          x-init="$watch('sidebarOpen', value => localStorage.setItem('sidebar_state', value))">
 
         {{-- ===========================
              SIDEBAR (sempre fixed)
