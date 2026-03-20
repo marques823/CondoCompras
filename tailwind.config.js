@@ -18,4 +18,11 @@ export default {
     },
 
     plugins: [forms],
+
+    safelist: [
+        'w-64',
+        'w-16',
+        'translate-x-0',
+        '-translate-x-full',
+    ],
 };
