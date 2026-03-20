@@ -1,163 +1,164 @@
-@php $user = Auth::user(); @endphp
+<nav x-data="{ open: false }" class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+    <!-- Primary Navigation Menu -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <div class="flex">
+                <!-- Logo -->
+                <div class="shrink-0 flex items-center">
+                    <a href="@if(Auth::user()->isZelador()){{ route('zelador.dashboard') }}@elseif(Auth::user()->isGerente()){{ route('gerente.dashboard') }}@elseif(Auth::user()->isAdministradora()){{ route('administradora.dashboard') }}@else{{ route('dashboard') }}@endif">
+                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />
+                    </a>
+                </div>
 
-{{-- Logo --}}
-<div class="flex h-16 flex-shrink-0 items-center justify-between px-4 bg-slate-950/50 border-b border-slate-800">
-    <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
-        <x-application-logo class="h-8 w-8 flex-shrink-0 fill-current text-blue-500" />
-        <span class="text-lg font-bold text-white whitespace-nowrap">CondoCompras</span>
-    </a>
-    {{-- Fechar no mobile --}}
-    <button @click="sidebarOpen = false"
-            class="md:hidden flex-shrink-0 p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700">
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-    </button>
-</div>
+                <!-- Navigation Links -->
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    @php $user = Auth::user(); @endphp
 
-{{-- Links de navegação --}}
-<nav class="flex-1 overflow-y-auto overflow-x-hidden px-2 py-4 space-y-1">
+                    @if($user->isZelador())
+                        <x-nav-link :href="route('zelador.dashboard')" :active="request()->routeIs('zelador.dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
+                            {{ __('Minhas Demandas') }}
+                        </x-nav-link>
 
-    <a href="{{ route('dashboard') }}"
-       class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors 
-              {{ request()->routeIs('dashboard') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-        <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-        </svg>
-        <span class="ml-3">Dashboard</span>
-    </a>
+                    @elseif($user->isAdministradora())
+                        <x-nav-link :href="route('administradora.dashboard')" :active="request()->routeIs('administradora.dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
+                            {{ __('Condomínios') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
+                            {{ __('Demandas') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                            {{ __('Gerentes') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('administradora.config')" :active="request()->routeIs('administradora.config')">
+                            {{ __('Configurações') }}
+                        </x-nav-link>
 
-    @if($user->isZelador() || $user->isAdministradora() || $user->isGerente())
-    <div class="pt-4">
-        <p class="px-3 mb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Operacional</p>
+                    @elseif($user->isGerente())
+                        <x-nav-link :href="route('gerente.dashboard')" :active="request()->routeIs('gerente.dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
+                            {{ __('Condomínios') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('prestadores.index')" :active="request()->routeIs('prestadores.*')">
+                            {{ __('Prestadores') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('demandas.index')" :active="request()->routeIs('demandas.*')">
+                            {{ __('Demandas') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                            {{ __('Zeladores') }}
+                        </x-nav-link>
 
-        @if($user->isZelador())
-        <a href="{{ route('demandas.index') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('demandas.*') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-            </svg>
-            <span class="ml-3">Minhas Demandas</span>
-        </a>
-        @endif
+                    @elseif($user->isAdmin())
+                        <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                            {{ __('Dashboard') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('administradoras.index')" :active="request()->routeIs('administradoras.*')">
+                            {{ __('Administradoras') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                            {{ __('Usuários Global') }}
+                        </x-nav-link>
+                    @endif
+                </div>
+            </div>
 
-        @if($user->isAdministradora() || $user->isGerente())
-        <a href="{{ route('condominios.index') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('condominios.*') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-            </svg>
-            <span class="ml-3">Condomínios</span>
-        </a>
-        <a href="{{ route('demandas.index') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('demandas.*') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-            </svg>
-            <span class="ml-3">Demandas</span>
-        </a>
-        <a href="{{ route('prestadores.index') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('prestadores.*') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-            </svg>
-            <span class="ml-3">Prestadores</span>
-        </a>
-        <a href="{{ route('documentos.index') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('documentos.*') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-            </svg>
-            <span class="ml-3">Documentos</span>
-        </a>
-        @endif
+            <!-- Settings Dropdown -->
+            <div class="hidden sm:flex sm:items-center sm:ms-6">
+                <x-dropdown align="right" width="48">
+                    <x-slot name="trigger">
+                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition ease-in-out duration-150">
+                            <div>{{ Auth::user()->name }} (@if($user->isAdmin()) Admin @elseif($user->isAdministradora()) Adm. Empresa @elseif($user->isGerente()) Gerente @else Zelador @endif)</div>
+
+                            <div class="ms-1">
+                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </button>
+                    </x-slot>
+
+                    <x-slot name="content">
+                        <x-dropdown-link :href="route('profile.edit')">
+                            {{ __('Profile') }}
+                        </x-dropdown-link>
+
+                        <!-- Authentication -->
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <x-dropdown-link :href="route('logout')"
+                                    onclick="event.preventDefault();
+                                                this.closest('form').submit();">
+                                {{ __('Log Out') }}
+                            </x-dropdown-link>
+                        </form>
+                    </x-slot>
+                </x-dropdown>
+            </div>
+
+            <!-- Hamburger -->
+            <div class="-me-2 flex items-center sm:hidden">
+                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-900 focus:text-gray-500 dark:focus:text-gray-400 transition duration-150 ease-in-out">
+                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
-    @endif
 
-    @if($user->isAdmin() || $user->isAdministradora() || $user->isGerente())
-    <div class="pt-4">
-        <p class="px-3 mb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Gestão</p>
+    <!-- Responsive Navigation Menu -->
+    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+        <div class="pt-2 pb-3 space-y-1">
+            @if($user->isZelador())
+                <x-responsive-nav-link :href="route('zelador.dashboard')" :active="request()->routeIs('zelador.dashboard')">
+                    {{ __('Dashboard') }}
+                </x-responsive-nav-link>
+            @elseif($user->isAdministradora())
+                <x-responsive-nav-link :href="route('administradora.dashboard')" :active="request()->routeIs('administradora.dashboard')">
+                    {{ __('Dashboard') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('condominios.index')" :active="request()->routeIs('condominios.*')">
+                    {{ __('Condomínios') }}
+                </x-responsive-nav-link>
+            @elseif($user->isGerente())
+                <x-responsive-nav-link :href="route('gerente.dashboard')" :active="request()->routeIs('gerente.dashboard')">
+                    {{ __('Dashboard') }}
+                </x-responsive-nav-link>
+            @elseif($user->isAdmin())
+                <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                    {{ __('Dashboard') }}
+                </x-responsive-nav-link>
+            @endif
+        </div>
 
-        @if($user->isAdministradora())
-        <a href="{{ route('users.index') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('users.*') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-            </svg>
-            <span class="ml-3">Gerentes</span>
-        </a>
-        @elseif($user->isGerente())
-        <a href="{{ route('users.index') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('users.*') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-            </svg>
-            <span class="ml-3">Zeladores</span>
-        </a>
-        @elseif($user->isAdmin())
-        <a href="{{ route('administradoras.index') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('administradoras.*') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-            </svg>
-            <span class="ml-3">Administradoras</span>
-        </a>
-        <a href="{{ route('users.index') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('users.*') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-            </svg>
-            <span class="ml-3">Usuários Global</span>
-        </a>
-        @endif
-    </div>
-    @endif
+        <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
+            <div class="px-4">
+                <div class="font-medium text-base text-gray-800 dark:text-gray-200">{{ Auth::user()->name }}</div>
+                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
+            </div>
 
-    <div class="pt-4">
-        <p class="px-3 mb-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">Sistema</p>
-
-        @if($user->isAdministradora())
-        <a href="{{ route('administradora.config') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('administradora.config') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-            <span class="ml-3">Configurações</span>
-        </a>
-        @endif
-
-        <a href="{{ route('profile.edit') }}"
-           class="flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                  {{ request()->routeIs('profile.edit') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800' }}">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-            </svg>
-            <span class="ml-3">Meu Perfil</span>
-        </a>
+            <div class="mt-3 space-y-1">
+                <x-responsive-nav-link :href="route('profile.edit')">
+                    {{ __('Profile') }}
+                </x-responsive-nav-link>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <x-responsive-nav-link :href="route('logout')"
+                            onclick="event.preventDefault();
+                                        this.closest('form').submit();">
+                        {{ __('Log Out') }}
+                    </x-responsive-nav-link>
+                </form>
+            </div>
+        </div>
     </div>
 </nav>
-
-{{-- Logout --}}
-<div class="flex-shrink-0 border-t border-slate-800 p-2">
-    <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button type="submit"
-                class="flex w-full items-center px-3 py-2 text-sm font-medium text-slate-400 rounded-md hover:bg-slate-800 hover:text-white transition-colors">
-            <svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-            </svg>
-            <span class="ml-3">Sair</span>
-        </button>
-    </form>
-</div>
