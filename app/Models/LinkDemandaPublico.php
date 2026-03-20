@@ -20,6 +20,7 @@ class LinkDemandaPublico extends Model
         'token_acesso',
         'cpf_cnpj_autorizado',
         'nome_prestador',
+        'whatsapp',
         'token_gerado_em',
         'autenticado_em',
         'sessao_id',

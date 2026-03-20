@@ -635,6 +635,75 @@
                         @csrf
 
                         <div class="space-y-6">
+                            <!-- Identificação do Prestador (se necessário) -->
+                            @if(!$link->nome_prestador || !$link->cpf_cnpj_autorizado)
+                                <div class="bg-white border-2 border-indigo-100 rounded-lg p-6 mb-6">
+                                    <h3 class="text-lg font-bold text-gray-900 mb-4">Sua Identificação</h3>
+                                    <p class="text-sm text-gray-600 mb-4">Como este é seu primeiro contato, precisamos de alguns dados para o cadastro.</p>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        @if(!$link->nome_prestador)
+                                            <div>
+                                                <label for="nome_razao_social" class="block text-sm font-medium text-gray-700 mb-2">
+                                                    Nome ou Razão Social <span class="text-red-500">*</span>
+                                                </label>
+                                                <input type="text" 
+                                                       id="nome_razao_social" 
+                                                       name="nome_razao_social" 
+                                                       required
+                                                       value="{{ old('nome_razao_social') }}"
+                                                       placeholder="Seu nome ou nome da empresa"
+                                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            </div>
+                                        @endif
+
+                                        @if(!$link->cpf_cnpj_autorizado)
+                                            <div>
+                                                <label for="cpf_cnpj" class="block text-sm font-medium text-gray-700 mb-2">
+                                                    CPF ou CNPJ <span class="text-red-500">*</span>
+                                                </label>
+                                                <input type="text" 
+                                                       id="cpf_cnpj" 
+                                                       name="cpf_cnpj" 
+                                                       required
+                                                       value="{{ old('cpf_cnpj') }}"
+                                                       placeholder="000.000.000-00"
+                                                       oninput="mascaraMutuario(this, cpfCnpj)"
+                                                       onblur="clearTimeout()"
+                                                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <script>
+                                    function mascaraMutuario(o, f) {
+                                        obj = o
+                                        fun = f
+                                        setTimeout("execmascara()", 1)
+                                    }
+
+                                    function execmascara() {
+                                        obj.value = fun(obj.value)
+                                    }
+
+                                    function cpfCnpj(v) {
+                                        v = v.replace(/\D/g, "")
+                                        if (v.length <= 11) {
+                                            v = v.replace(/(\d{3})(\d)/, "$1.$2")
+                                            v = v.replace(/(\d{3})(\d)/, "$1.$2")
+                                            v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2")
+                                        } else {
+                                            v = v.replace(/^(\d{2})(\d)/, "$1.$2")
+                                            v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+                                            v = v.replace(/\.(\d{3})(\d)/, ".$1/$2")
+                                            v = v.replace(/(\d{4})(\d)/, "$1-$2")
+                                        }
+                                        return v
+                                    }
+                                </script>
+                            @endif
+
                             <!-- Dados do Orçamento -->
                             <div>
                                 <h3 class="text-lg font-medium text-gray-900 mb-4">Informações do Orçamento</h3>
