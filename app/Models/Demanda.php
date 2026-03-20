@@ -76,6 +76,14 @@ class Demanda extends Model
     }
 
     /**
+     * Relacionamento com Links Públicos
+     */
+    public function linksPublicos(): HasMany
+    {
+        return $this->hasMany(LinkDemandaPublico::class);
+    }
+
+    /**
      * Relacionamento com Orçamentos
      */
     public function orcamentos(): HasMany

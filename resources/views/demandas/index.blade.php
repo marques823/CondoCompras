@@ -130,6 +130,7 @@
                                                 return '<svg class="w-4 h-4 inline ml-1 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
                                             }
                                         @endphp
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-12"></th>
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                                             <a href="{{ getSortUrl('titulo', $ordenarDirecao, $ordenarColuna) }}" class="flex items-center">
                                                 Título
@@ -156,12 +157,37 @@
                                                 {!! getSortIcon('created_at', $ordenarColuna, $ordenarDirecao) !!}
                                             </a>
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ações</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-12"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                     @foreach($demandas as $demanda)
-                                        <tr>
+                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors" onclick="window.location.href='{{ route('demandas.show', $demanda) }}'">
+                                            <td class="px-6 py-4 whitespace-nowrap" onclick="event.stopPropagation()">
+                                                <div class="relative inline-block">
+                                                    <button type="button" 
+                                                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-md p-1"
+                                                            onclick="event.stopPropagation(); toggleMenu({{ $demanda->id }})">
+                                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+                                                        </svg>
+                                                    </button>
+                                                    <div id="menu-{{ $demanda->id }}" class="hidden absolute left-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50 border border-gray-200 dark:border-gray-700">
+                                                        <div class="py-1">
+                                                            <a href="{{ route('demandas.show', $demanda) }}" 
+                                                               class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                               onclick="event.stopPropagation()">
+                                                                👁️ Ver Detalhes
+                                                            </a>
+                                                            <a href="{{ route('demandas.edit', $demanda) }}" 
+                                                               class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                               onclick="event.stopPropagation()">
+                                                                ✏️ Editar
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                                 {{ $demanda->titulo }}
                                             </td>
@@ -252,12 +278,7 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                 {{ $demanda->created_at->format('d/m/Y') }}
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <div class="flex gap-2">
-                                                    <a href="{{ route('demandas.show', $demanda) }}" class="text-blue-600 hover:text-blue-900">Ver</a>
-                                                    <a href="{{ route('demandas.edit', $demanda) }}" class="text-green-600 hover:text-green-900">Editar</a>
-                                                </div>
-                                            </td>
+                                            <td></td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -398,6 +419,31 @@
                     condominioAutocomplete.classList.add('hidden');
                 }
             });
+        });
+
+        // Função para alternar menu de ações
+        function toggleMenu(demandaId) {
+            // Fecha todos os menus abertos
+            document.querySelectorAll('[id^="menu-"]').forEach(menu => {
+                if (menu.id !== `menu-${demandaId}`) {
+                    menu.classList.add('hidden');
+                }
+            });
+            
+            // Alterna o menu atual
+            const menu = document.getElementById(`menu-${demandaId}`);
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
+        }
+
+        // Fecha menus ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('[onclick*="toggleMenu"]') && !e.target.closest('[id^="menu-"]')) {
+                document.querySelectorAll('[id^="menu-"]').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
         });
     </script>
 </x-app-layout>

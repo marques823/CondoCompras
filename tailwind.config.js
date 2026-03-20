@@ -18,4 +18,13 @@ export default {
     },
 
     plugins: [forms],
+
+    darkMode: 'selector',
+
+    safelist: [
+        'w-64',
+        'w-16',
+        'translate-x-0',
+        '-translate-x-full',
+    ],
 };

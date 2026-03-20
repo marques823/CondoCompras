@@ -32,59 +32,172 @@ class AdministradoraController extends Controller
             return redirect()->route('dashboard')->with('error', 'Usuário sem administradora vinculada.');
         }
         
-        // Estatísticas filtradas pela administradora
-        $stats = [
-            'total_condominios' => Condominio::where('administradora_id', $empresa->id)->count(),
-            'total_gerentes' => User::where('administradora_id', $empresa->id)
-                ->whereHas('roles', fn($q) => $q->where('name', 'gerente'))
-                ->count(),
-            'total_demandas' => Demanda::where('administradora_id', $empresa->id)->count(),
-            'demandas_abertas' => Demanda::where('administradora_id', $empresa->id)
-                ->where('status', 'aberta')
-                ->count(),
-            'demandas_em_andamento' => Demanda::where('administradora_id', $empresa->id)
-                ->where('status', 'em_andamento')
-                ->count(),
-            'demandas_concluidas' => Demanda::where('administradora_id', $empresa->id)
-                ->where('status', 'concluida')
-                ->count(),
-        ];
+        // ===== MÉTRICAS PRINCIPAIS =====
+        $totalCondominios = Condominio::where('administradora_id', $empresa->id)->count();
+        $totalPrestadores = Prestador::where('administradora_id', $empresa->id)->count();
+        $totalDemandas = Demanda::where('administradora_id', $empresa->id)->count();
         
-        // Variáveis para compatibilidade com a view
-        $totalCondominios = $stats['total_condominios'];
-        $totalPrestadores = \App\Models\Prestador::where('administradora_id', $empresa->id)->count();
-        $totalDemandas = $stats['total_demandas'];
-        $totalOrcamentos = \App\Models\Orcamento::whereHas('demanda', function($q) use ($empresa) {
+        // ===== MÉTRICAS DE DEMANDAS =====
+        $demandasAbertas = Demanda::where('administradora_id', $empresa->id)->where('status', 'aberta')->count();
+        $demandasEmAndamento = Demanda::where('administradora_id', $empresa->id)->where('status', 'em_andamento')->count();
+        $demandasAguardandoOrcamento = Demanda::where('administradora_id', $empresa->id)->where('status', 'aguardando_orcamento')->count();
+        $demandasConcluidas = Demanda::where('administradora_id', $empresa->id)->where('status', 'concluida')->count();
+        $demandasUrgentes = Demanda::where('administradora_id', $empresa->id)
+            ->whereIn('status', ['aberta', 'em_andamento', 'aguardando_orcamento'])
+            ->whereIn('urgencia', ['alta', 'critica'])
+            ->count();
+        
+        // ===== MÉTRICAS DE ORÇAMENTOS =====
+        $orcamentosPendentes = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->where('status', 'recebido')->count();
+        
+        $orcamentosAprovados = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->where('status', 'aprovado')->count();
+        
+        $totalOrcamentos = Orcamento::whereHas('demanda', function($q) use ($empresa) {
             $q->where('administradora_id', $empresa->id);
         })->count();
-        $demandasAbertas = $stats['demandas_abertas'];
-        $demandasEmAndamento = $stats['demandas_em_andamento'];
-        $demandasConcluidas = $stats['demandas_concluidas'];
         
-        // Condomínios recentes
-        $condominiosRecentes = Condominio::where('administradora_id', $empresa->id)
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+        $taxaAprovacao = $totalOrcamentos > 0 ? round(($orcamentosAprovados / $totalOrcamentos) * 100, 1) : 0;
         
-        // Demandas recentes
-        $demandasRecentes = Demanda::where('administradora_id', $empresa->id)
+        // Orçamentos vencendo hoje
+        $orcamentosVencendoHoje = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->whereNotNull('validade')
+          ->whereDate('validade', today())
+          ->where('status', 'aprovado')
+          ->count();
+        
+        // Orçamentos vencendo esta semana
+        $orcamentosVencendoSemana = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->whereNotNull('validade')
+          ->whereBetween('validade', [today(), today()->addDays(7)])
+          ->where('status', 'aprovado')
+          ->count();
+        
+        // ===== MÉTRICAS DE NEGOCIAÇÕES =====
+        $negociacoesPendentes = \App\Models\Negociacao::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->where('status', 'pendente')->count();
+        
+        // ===== MÉTRICAS DE SERVIÇOS CONCLUÍDOS =====
+        $servicosConcluidos = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->where('concluido', true)->count();
+        
+        $servicosConcluidosHoje = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->where('concluido', true)
+          ->whereDate('concluido_em', today())->count();
+        
+        // ===== LISTAS DE AÇÕES NECESSÁRIAS =====
+        // Orçamentos que precisam de aprovação
+        $orcamentosParaAprovar = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->where('status', 'recebido')
+          ->with(['demanda' => function($q) {
+              $q->with('condominio');
+          }, 'prestador'])
+          ->orderBy('created_at', 'desc')
+          ->limit(5)
+          ->get();
+        
+        // Negociações pendentes
+        $negociacoesParaResponder = \App\Models\Negociacao::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->where('status', 'pendente')
+          ->with(['demanda' => function($q) {
+              $q->with('condominio');
+          }, 'prestador', 'orcamento'])
+          ->orderBy('created_at', 'desc')
+          ->limit(5)
+          ->get();
+        
+        // Demandas urgentes
+        $demandasUrgentesLista = Demanda::where('administradora_id', $empresa->id)
+            ->whereIn('status', ['aberta', 'em_andamento', 'aguardando_orcamento'])
+            ->whereIn('urgencia', ['alta', 'critica'])
             ->with(['condominio', 'usuario'])
+            ->orderByRaw("CASE WHEN urgencia = 'critica' THEN 1 WHEN urgencia = 'alta' THEN 2 ELSE 3 END")
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
+        
+        // Serviços concluídos recentemente
+        $servicosConcluidosRecentes = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->where('concluido', true)
+          ->whereNotNull('concluido_em')
+          ->with(['demanda' => function($q) {
+              $q->with('condominio');
+          }, 'prestador', 'concluidoPor'])
+          ->orderBy('concluido_em', 'desc')
+          ->limit(5)
+          ->get();
+        
+        // Orçamentos vencendo
+        $orcamentosVencendo = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->whereNotNull('validade')
+          ->whereBetween('validade', [today(), today()->addDays(7)])
+          ->where('status', 'aprovado')
+          ->with(['demanda' => function($q) {
+              $q->with('condominio');
+          }, 'prestador'])
+          ->orderBy('validade', 'asc')
+          ->limit(5)
+          ->get();
+        
+        // ===== ESTATÍSTICAS DO MÊS =====
+        $demandasEsteMes = Demanda::where('administradora_id', $empresa->id)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count();
+        
+        $orcamentosEsteMes = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->whereMonth('created_at', now()->month)
+          ->whereYear('created_at', now()->year)
+          ->count();
+        
+        $servicosConcluidosEsteMes = Orcamento::whereHas('demanda', function($q) use ($empresa) {
+            $q->where('administradora_id', $empresa->id);
+        })->where('concluido', true)
+          ->whereNotNull('concluido_em')
+          ->whereMonth('concluido_em', now()->month)
+          ->whereYear('concluido_em', now()->year)
+          ->count();
 
         return view('administradora.dashboard', compact(
             'empresa',
             'totalCondominios',
             'totalPrestadores',
             'totalDemandas',
-            'totalOrcamentos',
             'demandasAbertas',
             'demandasEmAndamento',
+            'demandasAguardandoOrcamento',
             'demandasConcluidas',
-            'condominiosRecentes',
-            'demandasRecentes'
+            'demandasUrgentes',
+            'orcamentosPendentes',
+            'orcamentosAprovados',
+            'totalOrcamentos',
+            'taxaAprovacao',
+            'orcamentosVencendoHoje',
+            'orcamentosVencendoSemana',
+            'negociacoesPendentes',
+            'servicosConcluidos',
+            'servicosConcluidosHoje',
+            'orcamentosParaAprovar',
+            'negociacoesParaResponder',
+            'demandasUrgentesLista',
+            'servicosConcluidosRecentes',
+            'orcamentosVencendo',
+            'demandasEsteMes',
+            'orcamentosEsteMes',
+            'servicosConcluidosEsteMes'
         ));
     }
 
